@@ -1,0 +1,6 @@
+@SmoothJorneyAPI_HostAddress = http://localhost:5115
+
+GET {{SmoothJorneyAPI_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
