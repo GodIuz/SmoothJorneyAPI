@@ -24,7 +24,7 @@ namespace SmoothJorneyAPI.Controllers
         {
             if (string.IsNullOrWhiteSpace(name))
             {
-                return BadRequest("Please provide a name to search.");
+                return BadRequest("Παρακαλώ δώστε ένα όνομα για αναζήτηση.");
             }
 
             var businesses = await _context.Business
@@ -35,12 +35,35 @@ namespace SmoothJorneyAPI.Controllers
             return Ok(businesses);
         }
 
+        [HttpGet]
+        public async Task<IActionResult> GetBusinesses()
+        {
+            var businesses = await _context.Business
+                .Select(b => new
+                {
+                    b.BusinessId,
+                    b.Name,
+                    b.Description,
+                    b.City,
+                    b.AverageRating,
+
+                    CoverImageUrl = _context.BusinessImages
+                        .Where(img => img.BusinessId == b.BusinessId && img.IsCover)
+                        .Select(img => $"{Request.Scheme}://{Request.Host}/images/view/{img.Id}")
+                        .FirstOrDefault()
+                        ?? $"{Request.Scheme}://{Request.Host}/images/default-placeholder.svg"
+                })
+                .ToListAsync();
+
+            return Ok(businesses);
+        }
+
         [HttpGet("{id}")]
         public async Task<ActionResult<BusinessDetailDTO>> GetBusinessById(int id)
         {
             var business = await _context.Business.FindAsync(id);
 
-            if (business == null) return NotFound("Business not found");
+            if (business == null) return NotFound("Η Επιχείρηση δεν βρέθηκε");
 
             var detailDto = new BusinessDetailDTO
             {
@@ -48,7 +71,7 @@ namespace SmoothJorneyAPI.Controllers
                 Name = business.Name,
                 Category = business.Category,
                 City = business.City,
-                Rating = business.AverageRating,
+                AverageRating = business.AverageRating,
                 PriceLevel = business.PriceLevel,
                 PriceRange = business.PriceRange,
                 IsHiddenGem = business.IsHiddenGem,
@@ -215,7 +238,7 @@ namespace SmoothJorneyAPI.Controllers
             {
                 return NotFound();
             }
-            return File(business.CoverImage, business.CoverImageContentType ?? "image/jpeg");
+            return File(business.CoverImage, business.CoverImageContentType ?? "image/svg");
         }
     }
 }

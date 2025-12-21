@@ -53,7 +53,7 @@ namespace SmoothJorneyAPI.Entities
         public int PriceLevel { get; set; }
 
         [Required]
-        public double AverageRating { get; set; } = 0;
+        public double? AverageRating { get; set; } = 0;
 
         [Required, MaxLength(500)]
         public string? Description { get; set; }

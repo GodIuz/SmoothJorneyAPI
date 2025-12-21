@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using SmoothJorneyAPI.Data;
 
@@ -11,9 +12,11 @@ using SmoothJorneyAPI.Data;
 namespace SmoothJorneyAPI.Migrations
 {
     [DbContext(typeof(SmoothJorneyAPIContext))]
-    partial class SmoothJorneyAPIContextModelSnapshot : ModelSnapshot
+    [Migration("20251221132417_ModyfingColumns")]
+    partial class ModyfingColumns
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -36,14 +39,8 @@ namespace SmoothJorneyAPI.Migrations
                     b.Property<string>("ContentType")
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<byte[]>("ImageData")
+                    b.Property<byte[]>("ImageContent")
                         .HasColumnType("varbinary(max)");
-
-                    b.Property<bool>("IsCover")
-                        .HasColumnType("bit");
-
-                    b.Property<DateTime>("UploadedAt")
-                        .HasColumnType("datetime2");
 
                     b.HasKey("Id");
 

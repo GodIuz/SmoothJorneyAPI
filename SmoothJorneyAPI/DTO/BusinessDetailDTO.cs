@@ -16,6 +16,7 @@
         public string Phone { get; set; } = string.Empty;
         public string PriceRange { get; set; } = string.Empty;
         public int PriceLevel { get; set; }
+        public double? AverageRating { get; set; } = 0;
         public double Rating { get; set; }
         public byte[]? CoverImage { get; set; }
         public bool IsSuspectedScam { get; set; }

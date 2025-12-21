@@ -44,22 +44,22 @@ namespace SmoothJorneyAPI.Controllers
         public async Task<IActionResult> DeleteUser(int id)
         {
             var user = await _context.Users.FindAsync(id);
-            if (user == null) return NotFound("User not found");
+            if (user == null) return NotFound("Ο χρήστης δεν βρέθηκε.");
 
             _context.Users.Remove(user);
             await _context.SaveChangesAsync();
-            return Ok(new { Message = $"User {user.UserName} has been deleted." });
+            return Ok(new { Message = $"Ο χρήστης {user.UserName} έχει διαγραφτεί." });
         }
 
         [HttpPut("users/{id}/promote")]
         public async Task<IActionResult> PromoteToAdmin(int id)
         {
             var user = await _context.Users.FindAsync(id);
-            if (user == null) return NotFound("User not found");
+            if (user == null) return NotFound("Ο χρήστης δεν βρέθηκε.");
 
             user.Role = "Admin";
             await _context.SaveChangesAsync();
-            return Ok(new { Message = $"{user.UserName} is now an Admin!" });
+            return Ok(new { Message = $"Ο {user.UserName} έγινε Admin!" });
         }
 
         [HttpDelete("businesses/{id}")]
@@ -77,7 +77,7 @@ namespace SmoothJorneyAPI.Controllers
         public async Task<IActionResult> ToggleHiddenGem(int id)
         {
             var business = await _context.Business.FindAsync(id);
-            if (business == null) return NotFound("Business not found");
+            if (business == null) return NotFound("Η επιχείρηση δεν βρέθηκε.");
 
             business.IsHiddenGem = !business.IsHiddenGem;
 
@@ -90,7 +90,7 @@ namespace SmoothJorneyAPI.Controllers
 
             return Ok(new
             {
-                Message = business.IsHiddenGem ? "Business marked as Hidden Gem!" : "Business is no longer a Hidden Gem.",
+                Message = business.IsHiddenGem ? "Επιχείρηση επισημασμένη ως Hidden Gem!" : "Η επιχείρηση δεν είναι πλέον Hidden Gem.",
                 IsHiddenGem = business.IsHiddenGem
             });
         }
@@ -99,7 +99,7 @@ namespace SmoothJorneyAPI.Controllers
         public async Task<IActionResult> ToggleScam(int id)
         {
             var business = await _context.Business.FindAsync(id);
-            if (business == null) return NotFound("Business not found");
+            if (business == null) return NotFound("Η επιχείρηση δεν βρέθηκε");
 
             business.IsSuspectedScam = !business.IsSuspectedScam;
 
@@ -112,7 +112,7 @@ namespace SmoothJorneyAPI.Controllers
 
             return Ok(new
             {
-                Message = business.IsSuspectedScam ? "Business marked as SCAM!" : "Business marked as Safe.",
+                Message = business.IsSuspectedScam ? "h eπιχείρηση έχει χαρακτηριστεί ως ΑΠΑΤΗ!" : "Η επιχείρηση έχει επισημανθεί ως ασφαλής.",
                 IsSuspectedScam = business.IsSuspectedScam
             });
         }
@@ -144,7 +144,7 @@ namespace SmoothJorneyAPI.Controllers
             business.IsSuspectedScam = !business.IsSuspectedScam;
             await _context.SaveChangesAsync();
 
-            return Ok(new { Message = $"Business scam status changed to: {business.IsSuspectedScam}" });
+            return Ok(new { Message = $"Η κατάσταση της επιχειρηματικής απάτης άλλαξε σε: {business.IsSuspectedScam}" });
         }
 
         [HttpGet("reviews")]
@@ -175,14 +175,14 @@ namespace SmoothJorneyAPI.Controllers
 
             _context.Reviews.Remove(review);
             await _context.SaveChangesAsync();
-            return Ok(new { Message = "Review deleted." });
+            return Ok(new { Message = "Η αξιολόγηση σβήστηκε" });
         }
 
         [HttpPut("businesses/{id}")]
         public async Task<IActionResult> UpdateBusiness(int id, [FromBody] UpdateBusinessDTO dto)
         {
             var business = await _context.Business.FindAsync(id);
-            if (business == null) return NotFound("Business not found");
+            if (business == null) return NotFound("Η επιχείρηση δεν βρέθηκε.");
 
             business.Name = dto.Name;
             business.City = dto.City;
@@ -202,21 +202,21 @@ namespace SmoothJorneyAPI.Controllers
             }
 
             await _context.SaveChangesAsync();
-            return Ok(new { Message = "Business updated successfully!", Business = business });
+            return Ok(new { Message = "Η επιχείρηση ανανεώθηκε ", Business = business });
         }
 
         [HttpGet("top-businesses")]
         public async Task<IActionResult> GetTopBusinesses()
         {
             var topList = await _context.Business
-                .OrderByDescending(b => b.AverageRating) // Από το 5 προς το 1
-                .Take(5) // Φέρε μόνο τα 5 καλύτερα
+                .OrderByDescending(b => b.AverageRating)
+                .Take(5)
                 .Select(b => new
                 {
                     b.Name,
                     b.City,
                     Rating = b.AverageRating,
-                    ReviewsCount = _context.Reviews.Count(r => r.BusinessId == b.BusinessId) // Πόσα reviews έχει;
+                    ReviewsCount = _context.Reviews.Count(r => r.BusinessId == b.BusinessId)
                 })
                 .ToListAsync();
 

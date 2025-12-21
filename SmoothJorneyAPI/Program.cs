@@ -2,6 +2,8 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
+using Polly;
+using Polly.Extensions.Http;
 using SmoothJorneyAPI.Data;
 using SmoothJorneyAPI.Interfaces;
 using SmoothJorneyAPI.Services;
@@ -12,10 +14,19 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddDbContext<SmoothJorneyAPIContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DatabaseConnection") ?? throw new InvalidOperationException("Connection string 'SmoothJorneyAPIContext' not found.")));
 
-builder.Services.AddControllers();
+builder.Services.Configure<AiOptions>(builder.Configuration.GetSection("AiOptions"));
+
+var retryPolicy = HttpPolicyExtensions
+    .HandleTransientHttpError()
+    .WaitAndRetryAsync(3, retryAttempt => TimeSpan.FromSeconds(Math.Pow(2, retryAttempt)));
+
+builder.Services.AddHttpClient<GroqAiService>().AddPolicyHandler(retryPolicy);
+builder.Services.AddHttpClient<IWeatherService, WeatherService>().AddPolicyHandler(retryPolicy);
 
 builder.Services.AddControllers();
-builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddMemoryCache();
+builder.Services.AddScoped<RecommendationEngine>();
+builder.Services.AddScoped<IAiService, GroqAiService>();
 builder.Services.AddScoped<Argon2PasswordHasher>();
 builder.Services.AddScoped<IEmailService, EmailService>();
 builder.Services.Configure<JwtSettings>(builder.Configuration.GetSection("JwtSettings"));
@@ -92,7 +103,13 @@ if (app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 
+app.UseStaticFiles();
+
+app.UseCors("Allow Angular");
+
 app.UseAuthorization();
+
+app.UseAuthentication();
 
 app.MapControllers();
 

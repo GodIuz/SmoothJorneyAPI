@@ -1,5 +1,4 @@
 ﻿using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using SmoothJorneyAPI.Data;
@@ -45,7 +44,7 @@ namespace SmoothJorneyAPI.Controllers
 
             return Ok(new
             {
-                Message = "Trip created!",
+                Message = "Το ταξίδι δημιουργήθηκε!",
                 TripId = trip.TripId,
                 ShareLink = trip.ShareToken
             });
@@ -56,7 +55,7 @@ namespace SmoothJorneyAPI.Controllers
         public async Task<IActionResult> AddTripItem([FromBody] AddTripItemDTO dto)
         {
             var trip = await _context.Trips.FindAsync(dto.TripId);
-            if (trip == null) return NotFound("Trip not found");
+            if (trip == null) return NotFound("Το ταξίδι δεν βρέθηκε.");
 
             var item = new TripItem
             {
@@ -69,13 +68,13 @@ namespace SmoothJorneyAPI.Controllers
             string warningMessage = "";
             if (trip.CurrentCost > trip.TotalBudget)
             {
-                warningMessage = "Warning: You have exceeded your budget!";
+                warningMessage = "Warning: Έχετε ξεπεράσει τον προϋπολογισμό σας!";
             }
 
             _context.TripItems.Add(item);
             await _context.SaveChangesAsync();
 
-            return Ok(new { Message = "Activity added!", Warning = warningMessage, NewTotal = trip.CurrentCost });
+            return Ok(new { Message = "Η διαστηριότητα προστέθηκε!", Warning = warningMessage, NewTotal = trip.CurrentCost });
         }
 
         [HttpGet("shared/{token}")]
@@ -215,6 +214,72 @@ namespace SmoothJorneyAPI.Controllers
                 case 4: return 80.00m;
                 default: return 15.00m;
             }
+        }
+
+        [HttpPost("create-manual")]
+        [Authorize]
+        public async Task<IActionResult> CreateManualTrip([FromBody] CreateManualTripDTO dto)
+        {
+            var userId = int.Parse(User.FindFirst("ID")?.Value ?? "0");
+
+            var trip = new Trips
+            {
+                UserId = userId,
+                Title = dto.Title,
+                Description = $"Ταξιδι στην {dto.City}",
+                StartDate = dto.StartDate,
+                EndDate = dto.EndDate,
+                TotalBudget = dto.TotalBudget,
+                CurrentCost = 0,
+                ShareToken = Guid.NewGuid().ToString()
+            };
+
+            _context.Trips.Add(trip);
+            await _context.SaveChangesAsync();
+
+            return Ok(new { Message = "Το ταξίδι δημιουργήθηκε με επιτυχία!", TripId = trip.TripId });
+        }
+
+        [HttpPost("{tripId}/add-item")]
+        [Authorize]
+        public async Task<IActionResult> AddTripItem(int tripId, [FromBody] AddTripItemDTO dto)
+        {
+            var userId = int.Parse(User.FindFirst("ID")?.Value ?? "0");
+            var trip = await _context.Trips
+                .Include(t => t.TripItems)
+                .FirstOrDefaultAsync(t => t.TripId == tripId && t.UserId == userId);
+
+            if (trip == null)
+            { 
+                return NotFound("Δεν βρέθηκε το ταξίδι ή η πρόσβαση απορρίφθηκε."); 
+            }
+
+            if (dto.ScheduledTime < trip.StartDate || dto.ScheduledTime > trip.EndDate)
+            {
+                return BadRequest($"Η ημερομηνία δραστηριότητας πρέπει να είναι μεταξύ {trip.StartDate:dd/MM} και {trip.EndDate:dd/MM}.");
+            }
+
+            var newItem = new TripItem
+            {
+                TripId = tripId,
+                Title = dto.Title,
+                Description = dto.Description,
+                ScheduledTime = dto.ScheduledTime,
+                EstimatedCost = dto.Cost,
+                IsCompleted = false
+            };
+
+            trip.CurrentCost += dto.Cost;
+
+            _context.TripItems.Add(newItem);
+            await _context.SaveChangesAsync();
+
+            return Ok(new
+            {
+                Message = "Activity added!",
+                NewCurrentCost = trip.CurrentCost,
+                RemainingBudget = trip.TotalBudget - trip.CurrentCost
+            });
         }
     }
 }

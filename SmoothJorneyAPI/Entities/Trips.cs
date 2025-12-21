@@ -16,10 +16,10 @@ namespace SmoothJorneyAPI
         public string? Description { get; set; }
 
         [Required]
-        public DateOnly StartDate { get; set; }
+        public DateTime StartDate { get; set; }
 
         [Required]
-        public DateOnly EndDate { get; set; }
+        public DateTime EndDate { get; set; }
 
         [Required]
         [Column(TypeName = "decimal(18,2)")]

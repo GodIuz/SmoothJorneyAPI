@@ -9,6 +9,15 @@ namespace SmoothJorneyAPI.Entities
         public int TripItemId { get; set; }
 
         public int TripId { get; set; }
+        
+        [Required]
+        public string? Title { get; set; }
+
+        [Required]
+        public string? Description { get; set; }
+
+        [Required]
+        public bool IsCompleted { get; set; } = false;
 
         [Required]
         [Column(TypeName = "decimal(18,2)")]

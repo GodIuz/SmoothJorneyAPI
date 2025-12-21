@@ -23,7 +23,7 @@ namespace SmoothJorneyAPI.Controllers
             var userId = GetUserIdFromToken();
             if (userId == 0) return Unauthorized();
             var user = await _context.Users.FindAsync(userId);
-            if (user == null) return NotFound("User not found");
+            if (user == null) return NotFound("Ο χρήστης διαγράφτει.");
             return new UserProfileDTO
             {
                 FirstName = user.FirstName,
@@ -49,7 +49,7 @@ namespace SmoothJorneyAPI.Controllers
             user.City = dto.City;
             _context.Users.Update(user);
             await _context.SaveChangesAsync();
-            return Ok(new { Message = "Profile updated successfully!" });
+            return Ok(new { Message = "Το προφιλ ανανεώθηκε με επιτυχία." });
         }
 
         private int GetUserIdFromToken()
