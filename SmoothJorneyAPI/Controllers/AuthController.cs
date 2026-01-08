@@ -34,7 +34,7 @@ namespace SmoothJorneyAPI.Controllers
         [HttpPost("register")]
         public async Task<IActionResult> Register(RegisterDTO dto)
         {
-            if (await _context.Users.AnyAsync(u => u.Email == dto.Email))
+            if (await _context.Users.AnyAsync(u => u.UserName == dto.Username))
             {
                 return BadRequest("User already exists.");
             }
@@ -144,7 +144,7 @@ namespace SmoothJorneyAPI.Controllers
             user.PasswordResetToken = CreateRandomToken();
             user.ResetTokenExpires = DateTime.UtcNow.AddHours(1);
             await _context.SaveChangesAsync();
-            var resetLink = $"https://localhost:7003/Auth/reset-password?token={user.PasswordResetToken}";
+            var resetLink = $"http://localhost:4200/reset-password?token={user.PasswordResetToken}";
 
             var emailSubject = "Επαναφορά Κωδικού - Smooth Journey";
             var emailBody = $@"

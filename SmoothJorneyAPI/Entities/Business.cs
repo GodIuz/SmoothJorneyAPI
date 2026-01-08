@@ -66,6 +66,5 @@ namespace SmoothJorneyAPI.Entities
 
         public virtual ICollection<BusinessImage>? GalleryImages { get; set; }
         public virtual ICollection<Reviews>? Reviews { get; set; }
-        public virtual ICollection<BusinessReport>? Reports { get; set; }
     }
 }

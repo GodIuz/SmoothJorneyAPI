@@ -39,7 +39,7 @@ builder.Services.AddCors(options =>
     options.AddPolicy("AllowAngular",
         policy =>
         {
-            policy.AllowAnyOrigin()
+            policy.WithOrigins("http://localhost:4200")
                   .AllowAnyMethod()
                   .AllowAnyHeader();
         });
@@ -105,11 +105,11 @@ app.UseHttpsRedirection();
 
 app.UseStaticFiles();
 
-app.UseCors("Allow Angular");
-
-app.UseAuthorization();
+app.UseCors("AllowAngular");
 
 app.UseAuthentication();
+
+app.UseAuthorization();
 
 app.MapControllers();
 

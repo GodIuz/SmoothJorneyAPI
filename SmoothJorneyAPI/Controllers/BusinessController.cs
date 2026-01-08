@@ -240,5 +240,45 @@ namespace SmoothJorneyAPI.Controllers
             }
             return File(business.CoverImage, business.CoverImageContentType ?? "image/svg");
         }
+
+        [HttpGet("top-rated")]
+        [AllowAnonymous]
+        public async Task<ActionResult<IEnumerable<Business>>> GetTopRated()
+        {
+            var businesses = await _context.Business
+                                   .Where(b => b.Reviews.Any())
+                                   .Select(b => new
+                                   {
+                                       b.BusinessId,
+                                       b.Name,
+                                       b.CategoryType,
+                                       b.City,
+                                       b.Address,
+                                       b.PriceLevel,
+                                       b.PriceRange,
+                                       b.AverageRating,
+                                       b.CoverImage,
+                                       Rating = b.Reviews.Average(r => r.Rating),
+                                       ReviewsCount = b.Reviews.Count
+                                   })
+                                   .OrderByDescending(x => x.Rating)
+                                   .Take(3)
+                                   .ToListAsync();
+            var dtoList = businesses.Select(b => new TopBusinessDTO
+            {
+                BusinessId = b.BusinessId,
+                Name = b.Name,
+                CategoryType = b.CategoryType,
+                City = b.City, 
+                Address = b.Address,
+                PriceLevel = b.PriceLevel,
+                AverageRating = b.AverageRating,
+                CoverImage = b.CoverImage != null
+            ? "data:image/jpeg;base64," + Convert.ToBase64String(b.CoverImage)
+            : "https://via.placeholder.com/600"
+            }).ToList();
+
+            return Ok(dtoList);
+        }
     }
 }

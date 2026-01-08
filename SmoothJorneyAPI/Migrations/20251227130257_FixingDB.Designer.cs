@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using SmoothJorneyAPI.Data;
 
@@ -11,9 +12,11 @@ using SmoothJorneyAPI.Data;
 namespace SmoothJorneyAPI.Migrations
 {
     [DbContext(typeof(SmoothJorneyAPIContext))]
-    partial class SmoothJorneyAPIContextModelSnapshot : ModelSnapshot
+    [Migration("20251227130257_FixingDB")]
+    partial class FixingDB
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -138,6 +141,36 @@ namespace SmoothJorneyAPI.Migrations
                     b.HasKey("BusinessId");
 
                     b.ToTable("Business");
+                });
+
+            modelBuilder.Entity("SmoothJorneyAPI.Entities.BusinessReport", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int?>("BusinessId")
+                        .HasColumnType("int");
+
+                    b.Property<bool>("IsResolved")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Reason")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int>("ShopId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("UserId")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("BusinessId");
+
+                    b.ToTable("BusinessReports");
                 });
 
             modelBuilder.Entity("SmoothJorneyAPI.Entities.Favorite", b =>
@@ -440,6 +473,15 @@ namespace SmoothJorneyAPI.Migrations
                     b.Navigation("Business");
                 });
 
+            modelBuilder.Entity("SmoothJorneyAPI.Entities.BusinessReport", b =>
+                {
+                    b.HasOne("SmoothJorneyAPI.Entities.Business", "Business")
+                        .WithMany("Reports")
+                        .HasForeignKey("BusinessId");
+
+                    b.Navigation("Business");
+                });
+
             modelBuilder.Entity("SmoothJorneyAPI.Entities.Favorite", b =>
                 {
                     b.HasOne("SmoothJorneyAPI.Entities.Business", "Business")
@@ -524,6 +566,8 @@ namespace SmoothJorneyAPI.Migrations
             modelBuilder.Entity("SmoothJorneyAPI.Entities.Business", b =>
                 {
                     b.Navigation("GalleryImages");
+
+                    b.Navigation("Reports");
 
                     b.Navigation("Reviews");
                 });

@@ -30,15 +30,11 @@ namespace SmoothJorneyAPI
 
         public string ShareToken { get; set; } = Guid.NewGuid().ToString();
 
-        public double AverageRating { get; set; } = 0;
-
         public int UserId { get; set; }
 
         [ForeignKey("UserId")]
         public virtual Users? User { get; set; }
 
         public virtual ICollection<TripItem>? TripItems { get; set; }
-
-        public virtual ICollection<TripCollaborator>? Collaborators { get; set; }
     }
 }
