@@ -1,79 +1,67 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using SmoooothJourneyApi.Entities;
 using SmoothJorneyAPI.Data;
 
 namespace SmoooothJourneyApi.Controllers
 {
-    [Route("api/[controller]")]
+    [Route("[controller]")]
     [ApiController]
     public class ImagesController : ControllerBase
     {
-        private readonly SmoothJorneyAPIContext _context;
+        private readonly IWebHostEnvironment _environment;
 
-        public ImagesController(SmoothJorneyAPIContext context)
+        public ImagesController(IWebHostEnvironment environment)
         {
-            _context = context;
+            _environment = environment;
         }
 
-        // 1. UPLOAD (Χειροκίνητο ανέβασμα)
-        [HttpPost("upload/{businessId}")]
-        public async Task<IActionResult> UploadImage(int businessId, IFormFile file)
+        [HttpPost("upload")]
+        public async Task<IActionResult> UploadImage(IFormFile file)
         {
-            var business = await _context.Business.FindAsync(businessId);
-            if (business == null) 
-            { 
-                return NotFound("Η επιχείρηση δεν βρέθηκε"); 
-            }
-
-            if (file == null || file.Length == 0) 
-            { 
-                return BadRequest("Δεν έχει μεταφορτωθεί αρχείο!"); 
-            }
-
-            bool hasImages = await _context.BusinessImages.AnyAsync(i => i.BusinessId == businessId);
-
-            using (var memoryStream = new MemoryStream())
+            if (file == null || file.Length == 0)
             {
-                await file.CopyToAsync(memoryStream);
-                var imageEntity = new BusinessImage
+                return BadRequest("Δεν επιλέχθηκε αρχείο.");
+            }
+
+            var allowedExtensions = new[] { ".jpg", ".jpeg", ".png", ".gif", ".webp" };
+            var fileExtension = Path.GetExtension(file.FileName).ToLower();
+
+            if (!allowedExtensions.Contains(fileExtension))
+            {
+                return BadRequest("Μη έγκυρος τύπος αρχείου. Επιτρέπονται μόνο εικόνες (jpg, png, gif, webp).");
+            }
+
+            try
+            {
+                string webRootPath = _environment.WebRootPath;
+                if (string.IsNullOrWhiteSpace(webRootPath))
                 {
-                    BusinessId = businessId,
-                    ImageData = memoryStream.ToArray(),
-                    ContentType = file.ContentType,
-                    IsCover = !hasImages,
-                    UploadedAt = DateTime.UtcNow
-                };
+                    webRootPath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot");
+                }
 
-                _context.BusinessImages.Add(imageEntity);
-                await _context.SaveChangesAsync();
+                string uploadFolder = Path.Combine(webRootPath, "images", "uploads");
 
-                return Ok(new { Message = "Uploaded", IsCover = imageEntity.IsCover, Id = imageEntity.Id });
+                if (!Directory.Exists(uploadFolder))
+                {
+                    Directory.CreateDirectory(uploadFolder);
+                }
+
+                string uniqueFileName = Guid.NewGuid().ToString() + fileExtension;
+                string filePath = Path.Combine(uploadFolder, uniqueFileName);
+                using (var fileStream = new FileStream(filePath, FileMode.Create))
+                {
+                    await file.CopyToAsync(fileStream);
+                }
+                string fileUrl = $"/images/uploads/{uniqueFileName}";
+
+                return Ok(new { url = fileUrl });
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error uploading image: {ex.Message}");
+                return StatusCode(500, $"Internal server error: {ex.Message}");
             }
         }
 
-        [HttpGet("view/{id}")]
-        public async Task<IActionResult> GetImage(int id)
-        {
-            var image = await _context.BusinessImages.FindAsync(id);
-            if (image == null) return NotFound();
-            return File(image.ImageData, image.ContentType);
-        }
-
-        [HttpGet("gallery/{businessId}")]
-        public async Task<IActionResult> GetGallery(int businessId)
-        {
-            var images = await _context.BusinessImages
-                .Where(i => i.BusinessId == businessId)
-                .Select(i => new
-                {
-                    Id = i.Id,
-                    IsCover = i.IsCover,
-                    Url = $"{Request.Scheme}://{Request.Host}/images/view/{i.Id}"
-                })
-                .ToListAsync();
-
-            return Ok(images);
-        }
     }
 }

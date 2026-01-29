@@ -191,15 +191,7 @@ namespace SmoothJorneyAPI.Controllers
             business.Category = dto.Category;
             business.CategoryType = dto.CategoryType;
             business.MoodTags = dto.MoodTags;
-            if (dto.ImageFile != null)
-            {
-                using (var memoryStream = new MemoryStream())
-                {
-                    await dto.ImageFile.CopyToAsync(memoryStream);
-                    business.CoverImage = memoryStream.ToArray();
-                    business.CoverImageContentType = dto.ImageFile.ContentType;
-                }
-            }
+            
 
             await _context.SaveChangesAsync();
             return Ok(new { Message = "Η επιχείρηση ανανεώθηκε ", Business = business });
@@ -223,17 +215,6 @@ namespace SmoothJorneyAPI.Controllers
             return Ok(topList);
         }
 
-        [HttpGet("image/{id}")]
-        public async Task<IActionResult> GetBusinessImage(int id)
-        {
-            var business = await _context.Business.FindAsync(id);
 
-            if (business == null || business.CoverImage == null)
-            {
-                return NotFound();
-            }
-
-            return File(business.CoverImage, business.CoverImageContentType ?? "image/jpeg");
-        }
     }
 }

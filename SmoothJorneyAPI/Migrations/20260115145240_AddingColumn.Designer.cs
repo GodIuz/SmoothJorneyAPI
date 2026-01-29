@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using SmoothJorneyAPI.Data;
 
@@ -11,9 +12,11 @@ using SmoothJorneyAPI.Data;
 namespace SmoothJorneyAPI.Migrations
 {
     [DbContext(typeof(SmoothJorneyAPIContext))]
-    partial class SmoothJorneyAPIContextModelSnapshot : ModelSnapshot
+    [Migration("20260115145240_AddingColumn")]
+    partial class AddingColumn
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -21,6 +24,36 @@ namespace SmoothJorneyAPI.Migrations
                 .HasAnnotation("Relational:MaxIdentifierLength", 128);
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
+
+            modelBuilder.Entity("SmoooothJourneyApi.Entities.BusinessImage", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("BusinessId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("ContentType")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<byte[]>("ImageData")
+                        .HasColumnType("varbinary(max)");
+
+                    b.Property<bool>("IsCover")
+                        .HasColumnType("bit");
+
+                    b.Property<DateTime>("UploadedAt")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("BusinessId");
+
+                    b.ToTable("BusinessImages");
+                });
 
             modelBuilder.Entity("SmoothJorneyAPI.Entities.Business", b =>
                 {
@@ -57,6 +90,14 @@ namespace SmoothJorneyAPI.Migrations
                         .HasMaxLength(50)
                         .HasColumnType("nvarchar(50)");
 
+                    b.Property<byte[]>("CoverImage")
+                        .IsRequired()
+                        .HasColumnType("varbinary(max)");
+
+                    b.Property<string>("CoverImageContentType")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<DateTime>("CreateAt")
                         .HasColumnType("datetime2");
 
@@ -65,14 +106,17 @@ namespace SmoothJorneyAPI.Migrations
                         .HasMaxLength(500)
                         .HasColumnType("nvarchar(500)");
 
-                    b.Property<string>("ImageUrl")
-                        .HasColumnType("nvarchar(max)");
-
                     b.Property<bool>("IsHiddenGem")
                         .HasColumnType("bit");
 
                     b.Property<bool>("IsSuspectedScam")
                         .HasColumnType("bit");
+
+                    b.Property<double>("Latitude")
+                        .HasColumnType("float");
+
+                    b.Property<double>("Longitude")
+                        .HasColumnType("float");
 
                     b.Property<string>("MoodTags")
                         .IsRequired()
@@ -100,28 +144,6 @@ namespace SmoothJorneyAPI.Migrations
                     b.HasKey("BusinessId");
 
                     b.ToTable("Business");
-                });
-
-            modelBuilder.Entity("SmoothJorneyAPI.Entities.BusinessPhoto", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<int>("BusinessId")
-                        .HasColumnType("int");
-
-                    b.Property<string>("Url")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("BusinessId");
-
-                    b.ToTable("Photos");
                 });
 
             modelBuilder.Entity("SmoothJorneyAPI.Entities.Favorite", b =>
@@ -413,10 +435,10 @@ namespace SmoothJorneyAPI.Migrations
                     b.ToTable("Trips");
                 });
 
-            modelBuilder.Entity("SmoothJorneyAPI.Entities.BusinessPhoto", b =>
+            modelBuilder.Entity("SmoooothJourneyApi.Entities.BusinessImage", b =>
                 {
                     b.HasOne("SmoothJorneyAPI.Entities.Business", "Business")
-                        .WithMany("Photos")
+                        .WithMany("GalleryImages")
                         .HasForeignKey("BusinessId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
@@ -507,7 +529,7 @@ namespace SmoothJorneyAPI.Migrations
 
             modelBuilder.Entity("SmoothJorneyAPI.Entities.Business", b =>
                 {
-                    b.Navigation("Photos");
+                    b.Navigation("GalleryImages");
 
                     b.Navigation("Reviews");
                 });

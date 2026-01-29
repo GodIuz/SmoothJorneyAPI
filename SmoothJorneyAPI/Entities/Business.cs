@@ -1,5 +1,4 @@
-﻿using SmoooothJourneyApi.Entities;
-using System.ComponentModel.DataAnnotations;
+﻿using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
 namespace SmoothJorneyAPI.Entities
@@ -31,12 +30,6 @@ namespace SmoothJorneyAPI.Entities
         [Required,MaxLength(50)]
         public string? Address { get; set; }
         
-        [Required]
-        public double Latitude { get; set; }
-
-        [Required]
-        public double Longitude { get; set; }
-        
         [Required,MaxLength(50)]
         public string? City { get; set; }
 
@@ -58,13 +51,10 @@ namespace SmoothJorneyAPI.Entities
         [Required, MaxLength(500)]
         public string? Description { get; set; }
 
-        [Required]
-        public byte[]? CoverImage { get; set; }
+        public string? ImageUrl { get; set; }
 
-        [Required]
-        public string? CoverImageContentType { get; set; }
-
-        public virtual ICollection<BusinessImage>? GalleryImages { get; set; }
+        public DateTime CreateAt { get; set; } = DateTime.Now;
         public virtual ICollection<Reviews>? Reviews { get; set; }
+        public ICollection<BusinessPhoto> Photos { get; set; } = new List<BusinessPhoto>();
     }
 }

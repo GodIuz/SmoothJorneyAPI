@@ -1,10 +1,5 @@
 ﻿using Microsoft.EntityFrameworkCore;
-using SmoooothJourneyApi.Entities;
 using SmoothJorneyAPI.Entities;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
 
 namespace SmoothJorneyAPI.Data
 {
@@ -20,9 +15,8 @@ namespace SmoothJorneyAPI.Data
         public DbSet<Trips> Trips { get; set; }
         public DbSet<TripItem> TripItems { get; set; }
         public DbSet<Business> Business { get; set; } = default!;
-        public DbSet<BusinessImage> BusinessImages { get; set; } = default!;
         public DbSet<Reviews> Reviews { get; set; } = default!;
-        
+        public DbSet<BusinessPhoto> Photos { get; set; } = default!;
         public DbSet<Favorite> Favorites { get; set; } = default!;
             
         protected override void OnModelCreating(ModelBuilder modelBuilder)
