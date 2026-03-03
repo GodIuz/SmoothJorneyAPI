@@ -9,7 +9,7 @@ namespace SmoothJorneyAPI.Controllers
 {
     [Route("[controller]")]
     [ApiController]
-    [Authorize(Roles = "Admin")]
+    //[Authorize(Roles = "Admin")]
     public class AdminController : ControllerBase
     {
         private readonly SmoothJorneyAPIContext _context;
@@ -178,23 +178,35 @@ namespace SmoothJorneyAPI.Controllers
             return Ok(new { Message = "Η αξιολόγηση σβήστηκε" });
         }
 
-        [HttpPut("businesses/{id}")]
+        [HttpPut("update/{id}")]
         public async Task<IActionResult> UpdateBusiness(int id, [FromBody] UpdateBusinessDTO dto)
         {
+            if (id != dto.BusinessId && dto.BusinessId != 0)
+            {
+                return BadRequest("Το ID στο URL δεν ταιριάζει με το ID του αντικειμένου.");
+            }
+
             var business = await _context.Business.FindAsync(id);
             if (business == null) return NotFound("Η επιχείρηση δεν βρέθηκε.");
 
             business.Name = dto.Name;
-            business.City = dto.City;
             business.Description = dto.Description;
-            business.PriceRange = dto.PriceRange;
+            business.Address = dto.Address;
+            business.City = dto.City;
+            business.Country = dto.Country;
+            business.Phone = dto.Phone;
             business.Category = dto.Category;
             business.CategoryType = dto.CategoryType;
+            business.PriceRange = dto.PriceRange;
+            business.PriceLevel = dto.PriceLevel;
             business.MoodTags = dto.MoodTags;
-            
+            business.IsHiddenGem = dto.IsHiddenGem;
+            business.IsSuspectedScam = dto.IsSuspectedScam;
+            business.ImageUrl = dto.ImageUrl;
 
             await _context.SaveChangesAsync();
-            return Ok(new { Message = "Η επιχείρηση ανανεώθηκε ", Business = business });
+
+            return Ok(new { Message = "Η επιχείρηση ανανεώθηκε επιτυχώς!", Business = business });
         }
 
         [HttpGet("top-businesses")]
@@ -215,6 +227,24 @@ namespace SmoothJorneyAPI.Controllers
             return Ok(topList);
         }
 
+        [HttpPut("user/update:{id}")]
+        public async Task<IActionResult> UpdateUser(int id, [FromBody] UserDTO dto)
+        {
+            if (id != dto.UserId) return BadRequest();
 
+            var user = await _context.Users.FindAsync(id);
+            if (user == null) return NotFound();
+
+            user.FirstName = dto.FirstName;
+            user.LastName = dto.LastName;
+            user.Email = dto.Email;
+            user.City = dto.City;
+            user.Country = dto.Country;
+            user.Gender = dto.Gender;
+            user.DateOfBirth = dto.DateOfBirth;
+
+            await _context.SaveChangesAsync();
+            return Ok(new { Message = "User updated" });
+        }
     }
 }

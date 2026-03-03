@@ -9,7 +9,6 @@ namespace SmoothJorneyAPI.Controllers
 {
     [Route("[controller]")]
     [ApiController]
-    [Authorize]
     public class TripsController : ControllerBase
     {
         private readonly SmoothJorneyAPIContext _context;
@@ -77,35 +76,6 @@ namespace SmoothJorneyAPI.Controllers
             return Ok(new { Message = "Η διαστηριότητα προστέθηκε!", Warning = warningMessage, NewTotal = trip.CurrentCost });
         }
 
-        [HttpGet("shared/{token}")]
-        public async Task<IActionResult> GetSharedTrip(string token)
-        {
-            var trip = await _context.Trips
-                .Include(t => t.User)
-                .Include(t => t.TripItems!)
-                    .ThenInclude(i => i.Business)
-                .FirstOrDefaultAsync(t => t.ShareToken == token);
-
-            if (trip == null) return NotFound("Trip not found or link is invalid.");
-
-            var response = new TripResponseDTO
-            {
-                Title = trip.Title,
-                OwnerName = trip.User?.FirstName + " " + trip.User?.LastName,
-                TotalBudget = trip.TotalBudget,
-                CurrentCost = trip.CurrentCost,
-                RemainingBudget = trip.TotalBudget - trip.CurrentCost,
-                Activities = trip.TripItems.Select(i => new TripItemResponseDTO
-                {
-                    BusinessName = i.Business?.Name ?? "Unknown",
-                    City = i.Business?.City ?? "-",
-                    ScheduledTime = i.ScheduledTime,
-                    Cost = 0
-                }).OrderBy(a => a.ScheduledTime).ToList()
-            };
-
-            return Ok(response);
-        }
 
         [HttpPost("generate-mood")]
         public async Task<IActionResult> GenerateMoodTrip([FromBody] MoodTripRequestDTO request)

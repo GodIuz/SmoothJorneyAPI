@@ -39,7 +39,7 @@ namespace SmoooothJourneyApi.Controllers
                     webRootPath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot");
                 }
 
-                string uploadFolder = Path.Combine(webRootPath, "images", "uploads");
+                string uploadFolder = Path.Combine(webRootPath, "image", "uploads");
 
                 if (!Directory.Exists(uploadFolder))
                 {
@@ -52,7 +52,7 @@ namespace SmoooothJourneyApi.Controllers
                 {
                     await file.CopyToAsync(fileStream);
                 }
-                string fileUrl = $"/images/uploads/{uniqueFileName}";
+                string fileUrl = $"/image/uploads/{uniqueFileName}";
 
                 return Ok(new { url = fileUrl });
             }

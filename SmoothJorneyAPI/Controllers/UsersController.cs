@@ -31,7 +31,9 @@ namespace SmoothJorneyAPI.Controllers
                 Email = user.Email,
                 City = user.City,
                 Country = user.Country,
-                Gender = user.Gender
+                Gender = user.Gender,
+                DateOfBirth = user.DateOfBirth,
+                CreateOn =user.CreateAt
             };
         }
 

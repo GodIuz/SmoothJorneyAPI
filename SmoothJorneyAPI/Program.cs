@@ -23,7 +23,11 @@ var retryPolicy = HttpPolicyExtensions
 builder.Services.AddHttpClient<GroqAiService>().AddPolicyHandler(retryPolicy);
 builder.Services.AddHttpClient<IWeatherService, WeatherService>().AddPolicyHandler(retryPolicy);
 
-builder.Services.AddControllers();
+builder.Services.AddControllers()
+    .AddJsonOptions(options =>
+    {
+        options.JsonSerializerOptions.ReferenceHandler = System.Text.Json.Serialization.ReferenceHandler.IgnoreCycles;
+    });
 builder.Services.AddMemoryCache();
 builder.Services.AddScoped<RecommendationEngine>();
 builder.Services.AddScoped<IAiService, GroqAiService>();

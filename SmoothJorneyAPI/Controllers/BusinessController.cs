@@ -19,23 +19,12 @@ namespace SmoothJorneyAPI.Controllers
         }
 
         [HttpGet("all")]
-        public async Task<IActionResult> GetBusinesses()
+        public async Task<ActionResult<IEnumerable<Business>>> GetBusinesses()
         {
-            var businesses = await _context.Business
-                .Select(b => new
-                {
-                    b.BusinessId,
-                    b.Name,
-                    b.Description,
-                    b.City,
-                    b.AverageRating,
-                    b.ImageUrl,
-                    b.Category,
-                    b.PriceLevel
-                })
+            return await _context.Business
+                .Include(b => b.Reviews)
+                .ThenInclude(r => r.User) 
                 .ToListAsync();
-
-            return Ok(businesses);
         }
 
         [HttpGet("{id}")]
@@ -50,19 +39,21 @@ namespace SmoothJorneyAPI.Controllers
             var detailDto = new BusinessDetailDTO
             {
                 Id = business.BusinessId,
-                Name = business.Name,
-                Category = business.Category,
-                City = business.City,
+                Name = business.Name ?? "",
+                Category = business.Category ?? "",
+                CategoryType = business.CategoryType ?? "",
+                Description = business.Description ?? "",
+                Country = business.Country ?? "",
+                City = business.City ?? "",
                 AverageRating = business.AverageRating,
                 PriceLevel = business.PriceLevel,
-                PriceRange = business.PriceRange,
+                PriceRange = business.PriceRange ?? "",
                 IsHiddenGem = business.IsHiddenGem,
-                MoodTags = business.MoodTags,
-                Address = business.Address,
+                MoodTags = business.MoodTags ?? "",
+                Address = business.Address ?? "",
                 Phone = business.Phone ?? "N/A",
                 IsSuspectedScam = business.IsSuspectedScam,
-                Description = business.Description ?? string.Empty,
-                CoverPhoto = business.ImageUrl,
+                ImageUrl = business.ImageUrl,
                 GalleryPhotos = business.Photos.Select(p => p.Url).ToList()
             };
 
@@ -70,7 +61,7 @@ namespace SmoothJorneyAPI.Controllers
         }
 
         [HttpPost("create-business")]
-        [Authorize(Roles = "Admin")]
+        //[Authorize(Roles = "Admin")]
         public async Task<IActionResult> CreateBusiness([FromBody] CreateBusinessDTO dto)
         {
             var business = new Business
@@ -265,7 +256,7 @@ namespace SmoothJorneyAPI.Controllers
                                        b.PriceLevel,
                                        b.PriceRange,
                                        b.AverageRating,
-                                       Rating = b.Reviews.Average(r => r.Rating),
+                                       Rating = b.Reviews.Average(r => r.Rating) ,
                                        ReviewsCount = b.Reviews.Count
                                    })
                                    .OrderByDescending(x => x.Rating)
@@ -328,12 +319,12 @@ namespace SmoothJorneyAPI.Controllers
                 .Select(b => new BusinessSummaryDTO
                 {
                     Id = b.BusinessId,
-                    Name = b.Name,
-                    Category = b.Category,
-                    City = b.City,
+                    Name = b.Name ?? "",
+                    Category = b.Category ?? "",
+                    City = b.City ?? "",
                     Rating = b.AverageRating ?? 0,
                     ReviewCount = b.Reviews.Count,
-                    PriceRange = b.PriceRange,
+                    PriceRange = b.PriceRange ?? "",
                     IsSuspectedScam = b.IsSuspectedScam,
                     isHiddenGem = b.IsHiddenGem,
                 })

@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Http; // Απαραίτητο για το IFormFile
+﻿
 
 namespace SmoothJorneyAPI.DTO
 {
