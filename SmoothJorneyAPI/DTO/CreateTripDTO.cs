@@ -7,5 +7,6 @@
         public DateTime StartDate { get; set; }
         public DateTime EndDate { get; set; }
         public decimal TotalBudget { get; set; }
+        public string City { get; set; } = string.Empty;
     }
 }

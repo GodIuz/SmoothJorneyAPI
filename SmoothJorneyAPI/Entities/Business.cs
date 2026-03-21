@@ -46,7 +46,7 @@ namespace SmoothJorneyAPI.Entities
         public int PriceLevel { get; set; }
 
         [Required]
-        public double? AverageRating { get; set; } = 0;
+        public decimal? AverageRating { get; set; } = 0;
 
         [Required, MaxLength(500)]
         public string? Description { get; set; }
@@ -55,6 +55,5 @@ namespace SmoothJorneyAPI.Entities
 
         public DateTime CreateAt { get; set; } = DateTime.Now;
         public virtual ICollection<Reviews>? Reviews { get; set; }
-        public ICollection<BusinessPhoto> Photos { get; set; } = new List<BusinessPhoto>();
     }
 }
