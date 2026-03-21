@@ -20,7 +20,6 @@ namespace SmoothJorneyAPI.Controllers
         }
 
         [HttpGet("{id}")]
-        [Authorize(Roles = "Admin")]
         public async Task<ActionResult<Reviews>> GetReviewsById(int id)
         {
             var reviews = await _context.Reviews.FindAsync(id);
@@ -63,7 +62,6 @@ namespace SmoothJorneyAPI.Controllers
         }
 
         [HttpPost]
-        [Authorize(Roles = "User")]
         public async Task<ActionResult<Reviews>> PostReviews(Reviews reviews)
         {
             _context.Reviews.Add(reviews);
@@ -73,7 +71,6 @@ namespace SmoothJorneyAPI.Controllers
         }
 
         [HttpDelete("{id}")]
-        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> DeleteReview(int id)
         {
             var review = await _context.Reviews.FindAsync(id);
@@ -88,13 +85,13 @@ namespace SmoothJorneyAPI.Controllers
 
             return Ok(new { Message = "Review deleted and average rating updated." });
         }
+
         private bool ReviewsExists(int id)
         {
             return _context.Reviews.Any(e => e.Id == id);
         }
 
         [HttpPost("add")]
-        [Authorize(Roles = "User")]
         public async Task<IActionResult> AddReview([FromBody] CreateReviewsDTO dto)
         {
             var userIdClaim = User.Claims.FirstOrDefault(c => c.Type == "ID" || c.Type == "Id");
@@ -115,6 +112,7 @@ namespace SmoothJorneyAPI.Controllers
                 Content = dto.Content,
                 Rating = dto.Rating,
                 CreatedAt = DateTime.UtcNow,
+                Sentiment = "Pending"
             };
 
             _context.Reviews.Add(review);
@@ -135,9 +133,10 @@ namespace SmoothJorneyAPI.Controllers
                 {
                     Id = r.Id,
                     UserName = r.User != null ? r.User.FirstName + " " + r.User.LastName : "Unknown User",
-                    Content = r.Content ?? "",
+                    Content = r.Content,
                     Rating = r.Rating,
-                    CreatedAt = r.CreatedAt
+                    CreatedAt = r.CreatedAt,
+                    Sentiment = r.Sentiment
                 })
                 .ToListAsync();
 
@@ -153,7 +152,7 @@ namespace SmoothJorneyAPI.Controllers
 
             if (await businessReviews.AnyAsync())
             {
-                business.AverageRating = (decimal)await businessReviews.AverageAsync(r => r.Rating);
+                business.AverageRating = await businessReviews.AverageAsync(r => r.Rating);
             }
             else
             {

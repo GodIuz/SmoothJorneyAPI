@@ -17,8 +17,9 @@ namespace SmoothJorneyAPI.DTO
         public string Phone { get; set; } = string.Empty;
         public string PriceRange { get; set; } = string.Empty;
         public int PriceLevel { get; set; }
-        public decimal AverageRating { get; set; } = 0;
+        public double? AverageRating { get; set; } = 0;
         public bool IsSuspectedScam { get; set; }
         public string? ImageUrl { get; set; }
+        public List<string> GalleryPhotos { get; set; } = new List<string>();
     }
 }

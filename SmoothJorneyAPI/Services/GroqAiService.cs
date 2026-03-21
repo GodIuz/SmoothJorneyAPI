@@ -1,6 +1,4 @@
-﻿using Azure.Core;
-using Microsoft.Extensions.Options;
-using SmoothJorneyAPI.DTO;
+﻿using Microsoft.Extensions.Options;
 using SmoothJorneyAPI.Interfaces;
 using SmoothJorneyAPI.Settings;
 using System.Text;
@@ -19,73 +17,41 @@ namespace SmoothJorneyAPI.Services
             _apiKey = options.Value.GroqApiKey;
         }
 
-        
-        public async Task<string> GetDetailedTripPlanAsync(MoodTripRequestDTO req, string businessContext)
+        // --- 1. TRIP PLANNER ---
+        public async Task<string> GetTripPlanAsync(string city, int days, decimal budget, string mood, string weather, DateTime startDate)
         {
-            int totalDays = (req.EndDate - req.StartDate).Days + 1;
-            var systemPrompt = $@"
-                        Είσαι ένας επαγγελματίας ταξιδιωτικός πράκτορας. 
-                        Ο χρήστης θέλει να ταξιδέψει στην πόλη {req.City} με διάθεση '{req.Mood}'.
-                        Το ταξίδι θα διαρκέσει ΑΚΡΙΒΩΣ {req.Days} ΗΜΕΡΕΣ.
+            // Υπολογισμός Εποχής
+            var season = startDate.Month switch
+            {
+                12 or 1 or 2 => "Winter",
+                3 or 4 or 5 => "Spring",
+                6 or 7 or 8 => "Summer",
+                _ => "Autumn"
+            };
 
-                        Έχεις στη διάθεσή σου τις εξής επιχειρήσεις από τη βάση δεδομένων:
-                        {businessContext}
+            // Οδηγία Συστήματος (Strict JSON)
+            var systemPrompt = @"
+            You are an expert travel planner. 
+            Create a detailed itinerary strictly in JSON format.
+            DO NOT include markdown formatting (like ```json). Just return the raw JSON string.
+            Structure: { ""days"": [ { ""day"": 1, ""activities"": [ { ""time"": ""10:00"", ""title"": ""Activity Name"", ""description"": ""Short detail"", ""estimatedCost"": 20.0 } ] } ] }";
 
-                        ΟΔΗΓΙΕΣ:
-                        1. Πρέπει ΥΠΟΧΡΕΩΤΙΚΑ να επιστρέψεις ένα πλάνο που να καλύπτει ΚΑΙ ΤΙΣ {req.Days} ΗΜΕΡΕΣ. ΜΗΝ σταματήσεις στην 1η ημέρα.
-                        2. Ο πίνακας 'days' στο JSON ΠΡΕΠΕΙ να έχει ακριβώς {req.Days} αντικείμενα.
-                        3. Κάθε ημέρα πρέπει να έχει τουλάχιστον 2-3 δραστηριότητες.
-                        4. Αν δεν φτάνουν οι επιχειρήσεις που σου έδωσα για όλες τις μέρες, συμπλήρωσε το πρόγραμμα με γενικές δραστηριότητες (π.χ. 'Βόλτα στο κέντρο', 'Χαλάρωση στο πάρκο').
-
-                        Επίστρεψε ΜΟΝΟ το JSON σε αυτή τη μορφή (χωρίς markdown, χωρίς έξτρα κείμενο):
-                        {{
-                          ""days"": [
-                            {{
-                              ""day"": 1,
-                              ""activities"": [
-                                {{ ""title"": ""Όνομα επιχείρησης ή δραστηριότητας"", ""time"": ""10:00"", ""description"": ""Περιγραφή..."" }}
-                              ]
-                            }},
-                            // ... ΠΡΕΠΕΙ να συνεχίσεις για τη μέρα 2, 3 κ.ο.κ μέχρι τη μέρα {req.Days}
-                          ]
-                        }}
-                        ";
-
-            var userPrompt = $@"Σχεδιάστε ένα ταξίδι {req.Mood} στην {req.City}. 
-                                Προϋπολογισμός: {req.TotalBudget}€ συνολικά για {req.NumberOfPeople} άτομα.
-                                Ημερομηνίες: {req.StartDate:dd/MM/yyyy} έως {req.EndDate:dd/MM/yyyy}.
-                                Δημιουργήστε ακριβώς {totalDays} ημέρες δραστηριοτήτων.";
+            // Το αίτημα του χρήστη
+            var userPrompt = $@"
+            Plan a {days}-day trip to {city}.
+            CONTEXT:
+            - Date: {startDate:yyyy-MM-dd} ({season}).
+            - Weather forecast: {weather}. (If raining, prefer indoor activities like museums).
+            - User Mood: {mood}.
+            - Budget: {budget} EUR total.
+            
+            REQUIREMENTS:
+            - Provide estimated cost for each activity.
+            - Ensure total cost stays under {budget}.
+            - Output ONLY valid JSON.";
 
             var response = await CallLlmAsync(systemPrompt, userPrompt);
             return CleanJson(response);
-        }
-
-        public async Task<string> GenerateTextAsync(string prompt)
-        {
-            var requestBody = new
-            {
-                model = "mixtral-8x7b-32768",
-                messages = new[]
-                {
-                    new { role = "user", content = prompt }
-                },
-                temperature = 0.5
-            };
-
-            var request = new HttpRequestMessage(HttpMethod.Post, "https://api.groq.com/openai/v1/chat/completions");
-            request.Headers.Add("Authorization", $"Bearer {_apiKey}");
-            request.Content = new StringContent(JsonSerializer.Serialize(requestBody), Encoding.UTF8, "application/json");
-
-            var response = await _httpClient.SendAsync(request);
-            response.EnsureSuccessStatusCode();
-
-            var jsonResponse = await response.Content.ReadAsStringAsync();
-            using var doc = JsonDocument.Parse(jsonResponse);
-            return doc.RootElement
-                .GetProperty("choices")[0]
-                .GetProperty("message")
-                .GetProperty("content")
-                .GetString() ?? "Δεν ήταν δυνατή η ανάλυση.";
         }
 
         public async Task<string> SummarizeReviewsAsync(IEnumerable<string> reviews)
@@ -94,23 +60,22 @@ namespace SmoothJorneyAPI.Services
 
             var reviewsText = string.Join("\n- ", reviews.Take(15));
 
-            var systemPrompt = "Είστε ένας χρήσιμος βοηθός που συνοψίζει τις κριτικές πελατών.";
+            var systemPrompt = "You are a helpful assistant that summarizes customer reviews.";
             var userPrompt = $@"
-            Ακολουθούν κριτικές χρηστών για μια επιχείρηση:
+            Here are user reviews for a business:
             {reviewsText}
             
-            Παρακαλώ γράψτε μια σύντομη περίληψη (μέγιστο 3 γραμμές) που να αποτυπώνει το γενικό συναίσθημα, τα πλεονεκτήματα και τα μειονεκτήματα.";
+            Please write a short summary (max 3 lines) capturing the general sentiment, pros, and cons.";
 
             return await CallLlmAsync(systemPrompt, userPrompt);
         }
-
         private async Task<string> CallLlmAsync(string system, string user)
         {
-            if (string.IsNullOrEmpty(_apiKey)) return "Error: Λείπει το API Key";
+            if (string.IsNullOrEmpty(_apiKey)) return "Error: API Key missing.";
 
             var requestBody = new
             {
-                model = "llama-3.3-70b-versatile",
+                model = "llama3-8b-8192",
                 messages = new[]
                 {
                     new { role = "system", content = system },
@@ -147,16 +112,8 @@ namespace SmoothJorneyAPI.Services
 
         private string CleanJson(string raw)
         {
-            if (string.IsNullOrWhiteSpace(raw)) return "{}";
-
-            int startIndex = raw.IndexOf('{');
-            int endIndex = raw.LastIndexOf('}');
-
-            if (startIndex != -1 && endIndex != -1 && endIndex > startIndex)
-            {
-                return raw.Substring(startIndex, (endIndex - startIndex) + 1);
-            }
-            return raw.Trim();
+            if (string.IsNullOrEmpty(raw)) return "{}";
+            return raw.Replace("```json", "").Replace("```", "").Trim();
         }
     }
 }

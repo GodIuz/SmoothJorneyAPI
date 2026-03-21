@@ -16,10 +16,17 @@ namespace SmoothJorneyAPI.Entities
         [Required]
         public string? Description { get; set; }
 
+        [Required]
+        public bool IsCompleted { get; set; } = false;
+
+        [Required]
+        [Column(TypeName = "decimal(18,2)")]
+        public decimal EstimatedCost { get; set; }
+
         [ForeignKey("TripId")]
         public virtual Trips? Trip { get; set; }
 
-        public int? BusinessId { get; set; }
+        public int BusinessId { get; set; }
 
         [ForeignKey("BusinessId")]
         public virtual Business? Business { get; set; }

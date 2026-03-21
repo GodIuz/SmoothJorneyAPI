@@ -16,15 +16,19 @@ namespace SmoothJorneyAPI.Data
         public DbSet<TripItem> TripItems { get; set; }
         public DbSet<Business> Business { get; set; } = default!;
         public DbSet<Reviews> Reviews { get; set; } = default!;
+        public DbSet<BusinessPhoto> Photos { get; set; } = default!;
         public DbSet<Favorite> Favorites { get; set; } = default!;
-
+            
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
 
-            modelBuilder.Entity<Business>()
-                .Property(b => b.AverageRating)
-                .HasPrecision(18, 2);
+            modelBuilder.Entity<Trips>()
+            .HasOne(t => t.User)
+            .WithMany()
+            .HasForeignKey(t => t.UserId)
+            .OnDelete(DeleteBehavior.Restrict);
+
         }
     }
 }

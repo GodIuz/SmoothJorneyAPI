@@ -35,9 +35,8 @@ namespace SmoothJorneyAPI.Migrations
                         .HasMaxLength(50)
                         .HasColumnType("nvarchar(50)");
 
-                    b.Property<decimal>("AverageRating")
-                        .HasPrecision(18, 2)
-                        .HasColumnType("decimal(18,2)");
+                    b.Property<double>("AverageRating")
+                        .HasColumnType("float");
 
                     b.Property<string>("Category")
                         .IsRequired()
@@ -101,6 +100,28 @@ namespace SmoothJorneyAPI.Migrations
                     b.HasKey("BusinessId");
 
                     b.ToTable("Business");
+                });
+
+            modelBuilder.Entity("SmoothJorneyAPI.Entities.BusinessPhoto", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("BusinessId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Url")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("BusinessId");
+
+                    b.ToTable("Photos");
                 });
 
             modelBuilder.Entity("SmoothJorneyAPI.Entities.Favorite", b =>
@@ -179,6 +200,9 @@ namespace SmoothJorneyAPI.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
+                    b.Property<double>("AverageRating")
+                        .HasColumnType("float");
+
                     b.Property<int>("BusinessId")
                         .HasColumnType("int");
 
@@ -192,6 +216,9 @@ namespace SmoothJorneyAPI.Migrations
 
                     b.Property<int>("Rating")
                         .HasColumnType("int");
+
+                    b.Property<string>("Sentiment")
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<int?>("UserId")
                         .HasColumnType("int");
@@ -213,12 +240,18 @@ namespace SmoothJorneyAPI.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("TripItemId"));
 
-                    b.Property<int?>("BusinessId")
+                    b.Property<int>("BusinessId")
                         .HasColumnType("int");
 
                     b.Property<string>("Description")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
+
+                    b.Property<decimal>("EstimatedCost")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<bool>("IsCompleted")
+                        .HasColumnType("bit");
 
                     b.Property<DateTime>("ScheduledTime")
                         .HasColumnType("datetime2");
@@ -341,8 +374,8 @@ namespace SmoothJorneyAPI.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("TripId"));
 
-                    b.Property<string>("City")
-                        .HasColumnType("nvarchar(max)");
+                    b.Property<decimal>("CurrentCost")
+                        .HasColumnType("decimal(18,2)");
 
                     b.Property<string>("Description")
                         .HasColumnType("nvarchar(max)");
@@ -350,12 +383,9 @@ namespace SmoothJorneyAPI.Migrations
                     b.Property<DateTime>("EndDate")
                         .HasColumnType("datetime2");
 
-                    b.Property<string>("Mood")
-                        .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)");
-
-                    b.Property<int>("NumberOfPeople")
-                        .HasColumnType("int");
+                    b.Property<string>("ShareToken")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<DateTime>("StartDate")
                         .HasColumnType("datetime2");
@@ -371,11 +401,27 @@ namespace SmoothJorneyAPI.Migrations
                     b.Property<int>("UserId")
                         .HasColumnType("int");
 
+                    b.Property<int?>("UsersUserId")
+                        .HasColumnType("int");
+
                     b.HasKey("TripId");
 
                     b.HasIndex("UserId");
 
+                    b.HasIndex("UsersUserId");
+
                     b.ToTable("Trips");
+                });
+
+            modelBuilder.Entity("SmoothJorneyAPI.Entities.BusinessPhoto", b =>
+                {
+                    b.HasOne("SmoothJorneyAPI.Entities.Business", "Business")
+                        .WithMany("Photos")
+                        .HasForeignKey("BusinessId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Business");
                 });
 
             modelBuilder.Entity("SmoothJorneyAPI.Entities.Favorite", b =>
@@ -429,7 +475,9 @@ namespace SmoothJorneyAPI.Migrations
                 {
                     b.HasOne("SmoothJorneyAPI.Entities.Business", "Business")
                         .WithMany()
-                        .HasForeignKey("BusinessId");
+                        .HasForeignKey("BusinessId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
 
                     b.HasOne("SmoothJorneyAPI.Trips", "Trip")
                         .WithMany("TripItems")
@@ -445,16 +493,22 @@ namespace SmoothJorneyAPI.Migrations
             modelBuilder.Entity("SmoothJorneyAPI.Trips", b =>
                 {
                     b.HasOne("SmoothJorneyAPI.Entities.Users", "User")
-                        .WithMany("Trips")
+                        .WithMany()
                         .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
+
+                    b.HasOne("SmoothJorneyAPI.Entities.Users", null)
+                        .WithMany("Trips")
+                        .HasForeignKey("UsersUserId");
 
                     b.Navigation("User");
                 });
 
             modelBuilder.Entity("SmoothJorneyAPI.Entities.Business", b =>
                 {
+                    b.Navigation("Photos");
+
                     b.Navigation("Reviews");
                 });
 

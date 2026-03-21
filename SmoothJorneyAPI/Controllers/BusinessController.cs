@@ -4,8 +4,6 @@ using Microsoft.EntityFrameworkCore;
 using SmoothJorneyAPI.Data;
 using SmoothJorneyAPI.DTO;
 using SmoothJorneyAPI.Entities;
-using SmoothJorneyAPI.Interfaces;
-using SmoothJorneyAPI.Services;
 
 namespace SmoothJorneyAPI.Controllers
 {
@@ -21,62 +19,19 @@ namespace SmoothJorneyAPI.Controllers
         }
 
         [HttpGet("all")]
-        public async Task<ActionResult> GetBusinesses()
+        public async Task<ActionResult<IEnumerable<Business>>> GetBusinesses()
         {
-            var businesses = await _context.Business
-                .Select(b => new {
-                    b.BusinessId,
-                    b.Name,
-                    b.AverageRating,
-                    b.Description,
-                    b.Country,
-                    b.CategoryType,
-                    b.Category,
-                    b.Address,
-                    b.PriceLevel,
-                    b.PriceRange,
-                    b.MoodTags,
-                    b.Phone,
-                    b.ImageUrl,
-                    b.IsHiddenGem,
-                    b.IsSuspectedScam,
-                    b.City,
-                    Reviews = b.Reviews.Select(r => new {
-                        r.Id,
-                        r.Content,
-                        r.Rating,
-                        r.User.UserName
-                    })
-                })
+            return await _context.Business
+                .Include(b => b.Reviews)
+                .ThenInclude(r => r.User) 
                 .ToListAsync();
-
-            return Ok(businesses);
-        }
-
-        [HttpGet("{id}/summary")]
-        [AllowAnonymous]
-        public async Task<IActionResult> GetAiSummary(int id, [FromServices] IAiService aiService)
-        {
-            var reviews = await _context.Reviews
-                .Where(r => r.BusinessId == id && !string.IsNullOrWhiteSpace(r.Content))
-                .Select(r => r.Content)
-                .Take(15)
-                .ToListAsync();
-
-            if (!reviews.Any())
-            {
-                return Ok(new { summary = "Δεν υπάρχουν αρκετές κριτικές για να δημιουργηθεί σύνοψη." });
-            }
-            var summary = await ((GroqAiService)aiService).SummarizeReviewsAsync(reviews);
-
-            return Ok(new { summary = summary });
         }
 
         [HttpGet("{id}")]
         public async Task<ActionResult<BusinessDetailDTO>> GetBusinessById(int id)
         {
             var business = await _context.Business
-                .Include(b => b.ImageUrl)
+                .Include(b => b.Photos)
                 .FirstOrDefaultAsync(b => b.BusinessId == id);
 
             if (business == null) return NotFound("Η Επιχείρηση δεν βρέθηκε");
@@ -90,7 +45,7 @@ namespace SmoothJorneyAPI.Controllers
                 Description = business.Description ?? "",
                 Country = business.Country ?? "",
                 City = business.City ?? "",
-                AverageRating = (decimal)business.AverageRating,
+                AverageRating = business.AverageRating,
                 PriceLevel = business.PriceLevel,
                 PriceRange = business.PriceRange ?? "",
                 IsHiddenGem = business.IsHiddenGem,
@@ -99,13 +54,14 @@ namespace SmoothJorneyAPI.Controllers
                 Phone = business.Phone ?? "N/A",
                 IsSuspectedScam = business.IsSuspectedScam,
                 ImageUrl = business.ImageUrl,
+                GalleryPhotos = business.Photos.Select(p => p.Url).ToList()
             };
 
             return Ok(detailDto);
         }
 
         [HttpPost("create-business")]
-        [Authorize(Roles = "Admin")]
+        //[Authorize(Roles = "Admin")]
         public async Task<IActionResult> CreateBusiness([FromBody] CreateBusinessDTO dto)
         {
             var business = new Business
@@ -132,6 +88,38 @@ namespace SmoothJorneyAPI.Controllers
             await _context.SaveChangesAsync();
 
             return Ok(new { message = "Η επιχείρηση δημιουργήθηκε επιτυχώς!" });
+        }
+
+        [Authorize(Roles = "Admin")]
+        [HttpPost("{id}/set-cover")]
+        public async Task<IActionResult> SetCoverPhoto(int id, [FromBody] string photoPath)
+        {
+            var business = await _context.Business.FindAsync(id);
+            if (business == null) return NotFound();
+
+            business.ImageUrl = photoPath;
+
+            await _context.SaveChangesAsync();
+            return Ok(new { message = "Cover photo updated!" });
+        }
+
+        [Authorize(Roles = "Admin")]
+        [HttpPost("{id}/add-gallery-photo")]
+        public async Task<IActionResult> AddGalleryPhoto(int id, [FromBody] string photoPath)
+        {
+            var business = await _context.Business.FindAsync(id);
+            if (business == null) return NotFound();
+
+            var newPhoto = new BusinessPhoto
+            {
+                Url = photoPath,
+                BusinessId = id
+            };
+
+            _context.Photos.Add(newPhoto);
+            await _context.SaveChangesAsync();
+
+            return Ok(new { message = "Photo added to gallery!" });
         }
 
         [HttpGet("search")]
@@ -282,7 +270,7 @@ namespace SmoothJorneyAPI.Controllers
                 City = b.City,
                 Address = b.Address,
                 PriceLevel = b.PriceLevel,
-                AverageRating = (decimal)b.AverageRating
+                AverageRating = b.AverageRating
             }).ToList();
 
             return Ok(dtoList);
@@ -334,7 +322,8 @@ namespace SmoothJorneyAPI.Controllers
                     Name = b.Name ?? "",
                     Category = b.Category ?? "",
                     City = b.City ?? "",
-                    Rating =  (decimal)b.AverageRating,
+                    Rating = b.AverageRating ?? 0,
+                    ReviewCount = b.Reviews.Count,
                     PriceRange = b.PriceRange ?? "",
                     IsSuspectedScam = b.IsSuspectedScam,
                     isHiddenGem = b.IsHiddenGem,
