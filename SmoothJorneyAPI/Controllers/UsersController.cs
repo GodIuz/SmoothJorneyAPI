@@ -9,7 +9,6 @@ namespace SmoothJorneyAPI.Controllers
 {
     [Route("[controller]")]
     [ApiController]
-    [Authorize]
     public class UsersController : ControllerBase
     {
         private readonly SmoothJorneyAPIContext _context;
@@ -18,6 +17,7 @@ namespace SmoothJorneyAPI.Controllers
             _context = context;
         }
         [HttpGet("profile")]
+        [Authorize(Roles = "User")]
         public async Task<ActionResult<UserProfileDTO>> GetProfile()
         {
             var userId = GetUserIdFromToken();
@@ -38,6 +38,7 @@ namespace SmoothJorneyAPI.Controllers
         }
 
         [HttpPut("update-profile")]
+        [Authorize(Roles = "User")]
         public async Task<IActionResult> UpdateProfile(UpdateProfileDTO dto)
         {
             var userId = GetUserIdFromToken();

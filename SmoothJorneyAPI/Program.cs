@@ -8,6 +8,7 @@ using SmoothJorneyAPI.Data;
 using SmoothJorneyAPI.Interfaces;
 using SmoothJorneyAPI.Services;
 using SmoothJorneyAPI.Settings;
+using System.Security.Claims;
 using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -29,7 +30,6 @@ builder.Services.AddControllers()
         options.JsonSerializerOptions.ReferenceHandler = System.Text.Json.Serialization.ReferenceHandler.IgnoreCycles;
     });
 builder.Services.AddMemoryCache();
-builder.Services.AddScoped<RecommendationEngine>();
 builder.Services.AddScoped<IAiService, GroqAiService>();
 builder.Services.AddScoped<Argon2PasswordHasher>();
 builder.Services.AddScoped<IEmailService, EmailService>();
@@ -37,7 +37,6 @@ builder.Services.Configure<JwtSettings>(builder.Configuration.GetSection("JwtSet
 
 var jwtSettings = builder.Configuration.GetSection("JwtSettings");
 var key = Encoding.UTF8.GetBytes(jwtSettings["Key"]!);
-
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowAngular",
@@ -65,7 +64,7 @@ builder.Services.AddAuthentication(options =>
         ValidIssuer = jwtSettings["Issuer"],
         ValidAudience = jwtSettings["Audience"],
         IssuerSigningKey = new SymmetricSecurityKey(key),
-        RoleClaimType = "role"
+        RoleClaimType = ClaimTypes.Role
     };
 });
 
@@ -109,6 +108,8 @@ if (app.Environment.IsDevelopment())
 app.UseHttpsRedirection();
 
 app.UseStaticFiles();
+
+app.UseRouting();
 
 app.UseCors("AllowAngular");
 

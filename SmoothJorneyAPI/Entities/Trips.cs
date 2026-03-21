@@ -12,7 +12,7 @@ namespace SmoothJorneyAPI
 
         [Required, MaxLength(100)]
         public string Title { get; set; } = string.Empty;
-
+        
         public string? Description { get; set; }
 
         [Required]
@@ -21,14 +21,14 @@ namespace SmoothJorneyAPI
         [Required]
         public DateTime EndDate { get; set; }
 
+        public string? City { get; set; }
+
+        [MaxLength(50)]
+        public string? Mood { get; set; }
+
         [Required]
         [Column(TypeName = "decimal(18,2)")]
         public decimal TotalBudget { get; set; }
-
-        [Column(TypeName = "decimal(18,2)")]
-        public decimal CurrentCost { get; set; } = 0;
-
-        public string ShareToken { get; set; } = Guid.NewGuid().ToString();
 
         public int UserId { get; set; }
 
@@ -36,5 +36,7 @@ namespace SmoothJorneyAPI
         public virtual Users? User { get; set; }
 
         public virtual ICollection<TripItem>? TripItems { get; set; }
+
+        public int NumberOfPeople { get; set; } = 1;
     }
 }

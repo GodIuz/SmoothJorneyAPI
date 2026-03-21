@@ -9,7 +9,6 @@ namespace SmoothJorneyAPI.Controllers
 {
     [Route("[controller]")]
     [ApiController]
-    //[Authorize(Roles = "Admin")]
     public class AdminController : ControllerBase
     {
         private readonly SmoothJorneyAPIContext _context;
@@ -19,6 +18,7 @@ namespace SmoothJorneyAPI.Controllers
         }
 
         [HttpGet("users")]
+        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> GetAllUsers()
         {
             var users = await _context.Users
@@ -41,6 +41,7 @@ namespace SmoothJorneyAPI.Controllers
         }
 
         [HttpDelete("users/{id}")]
+        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> DeleteUser(int id)
         {
             var user = await _context.Users.FindAsync(id);
@@ -52,6 +53,7 @@ namespace SmoothJorneyAPI.Controllers
         }
 
         [HttpPut("users/{id}/promote")]
+        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> PromoteToAdmin(int id)
         {
             var user = await _context.Users.FindAsync(id);
@@ -63,6 +65,7 @@ namespace SmoothJorneyAPI.Controllers
         }
 
         [HttpDelete("businesses/{id}")]
+        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> DeleteBusiness(int id)
         {
             var business = await _context.Business.FindAsync(id);
@@ -73,51 +76,8 @@ namespace SmoothJorneyAPI.Controllers
             return Ok(new { Message = "Business deleted successfully." });
         }
 
-        [HttpPut("businesses/{id}/toggle-gem")]
-        public async Task<IActionResult> ToggleHiddenGem(int id)
-        {
-            var business = await _context.Business.FindAsync(id);
-            if (business == null) return NotFound("Η επιχείρηση δεν βρέθηκε.");
-
-            business.IsHiddenGem = !business.IsHiddenGem;
-
-            if (business.IsHiddenGem)
-            {
-                business.IsSuspectedScam = false;
-            }
-
-            await _context.SaveChangesAsync();
-
-            return Ok(new
-            {
-                Message = business.IsHiddenGem ? "Επιχείρηση επισημασμένη ως Hidden Gem!" : "Η επιχείρηση δεν είναι πλέον Hidden Gem.",
-                IsHiddenGem = business.IsHiddenGem
-            });
-        }
-
-        [HttpPut("businesses/{id}/toggle-scam")]
-        public async Task<IActionResult> ToggleScam(int id)
-        {
-            var business = await _context.Business.FindAsync(id);
-            if (business == null) return NotFound("Η επιχείρηση δεν βρέθηκε");
-
-            business.IsSuspectedScam = !business.IsSuspectedScam;
-
-            if (business.IsSuspectedScam)
-            {
-                business.IsHiddenGem = false;
-            }
-
-            await _context.SaveChangesAsync();
-
-            return Ok(new
-            {
-                Message = business.IsSuspectedScam ? "h eπιχείρηση έχει χαρακτηριστεί ως ΑΠΑΤΗ!" : "Η επιχείρηση έχει επισημανθεί ως ασφαλής.",
-                IsSuspectedScam = business.IsSuspectedScam
-            });
-        }
-
         [HttpGet("businesses")]
+        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> GetAllBusinessesForAdmin()
         {
             var businesses = await _context.Business
@@ -135,19 +95,8 @@ namespace SmoothJorneyAPI.Controllers
             return Ok(businesses);
         }
 
-        [HttpPut("businesses/{id}/toggle-scam-status")]
-        public async Task<IActionResult> ToggleScamStatus(int id)
-        {
-            var business = await _context.Business.FindAsync(id);
-            if (business == null) return NotFound();
-
-            business.IsSuspectedScam = !business.IsSuspectedScam;
-            await _context.SaveChangesAsync();
-
-            return Ok(new { Message = $"Η κατάσταση της επιχειρηματικής απάτης άλλαξε σε: {business.IsSuspectedScam}" });
-        }
-
         [HttpGet("reviews")]
+        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> GetAllReviews()
         {
             var reviews = await _context.Reviews
@@ -168,6 +117,7 @@ namespace SmoothJorneyAPI.Controllers
         }
 
         [HttpDelete("reviews/{id}")]
+        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> DeleteReview(int id)
         {
             var review = await _context.Reviews.FindAsync(id);
@@ -179,6 +129,7 @@ namespace SmoothJorneyAPI.Controllers
         }
 
         [HttpPut("update/{id}")]
+        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> UpdateBusiness(int id, [FromBody] UpdateBusinessDTO dto)
         {
             if (id != dto.BusinessId && dto.BusinessId != 0)
@@ -210,6 +161,7 @@ namespace SmoothJorneyAPI.Controllers
         }
 
         [HttpGet("top-businesses")]
+        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> GetTopBusinesses()
         {
             var topList = await _context.Business
@@ -228,6 +180,7 @@ namespace SmoothJorneyAPI.Controllers
         }
 
         [HttpPut("user/update:{id}")]
+        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> UpdateUser(int id, [FromBody] UserDTO dto)
         {
             if (id != dto.UserId) return BadRequest();

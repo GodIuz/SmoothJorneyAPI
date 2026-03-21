@@ -4,6 +4,10 @@ using Microsoft.EntityFrameworkCore;
 using SmoothJorneyAPI.Data;
 using SmoothJorneyAPI.DTO;
 using SmoothJorneyAPI.Entities;
+using SmoothJorneyAPI.Interfaces;
+using SmoothJorneyAPI.Services;
+using System.Security.Claims;
+using System.Text.Json;
 
 namespace SmoothJorneyAPI.Controllers
 {
@@ -12,10 +16,17 @@ namespace SmoothJorneyAPI.Controllers
     public class TripsController : ControllerBase
     {
         private readonly SmoothJorneyAPIContext _context;
+        private readonly IWeatherService _weatherService;
+        private readonly IAiService _aiService;
 
-        public TripsController(SmoothJorneyAPIContext context)
+        public TripsController(
+            SmoothJorneyAPIContext context,
+            IWeatherService weatherService,
+            IAiService aiService)
         {
             _context = context;
+            _weatherService = weatherService;
+            _aiService = aiService;
         }
 
         [HttpPost("create")]
@@ -33,9 +44,8 @@ namespace SmoothJorneyAPI.Controllers
                 StartDate = dto.StartDate,
                 EndDate = dto.EndDate,
                 TotalBudget = dto.TotalBudget,
-                CurrentCost = 0,
+                City = dto.City,
                 UserId = userId,
-                ShareToken = Guid.NewGuid().ToString()
             };
 
             _context.Trips.Add(trip);
@@ -43,9 +53,7 @@ namespace SmoothJorneyAPI.Controllers
 
             return Ok(new
             {
-                Message = "Το ταξίδι δημιουργήθηκε!",
-                TripId = trip.TripId,
-                ShareLink = trip.ShareToken
+                Message = "Το ταξίδι δημιουργήθηκε!"
             });
         }
 
@@ -53,136 +61,165 @@ namespace SmoothJorneyAPI.Controllers
         [Authorize]
         public async Task<IActionResult> AddTripItem([FromBody] AddTripItemDTO dto)
         {
-            var trip = await _context.Trips.FindAsync(dto.TripId);
-            if (trip == null) return NotFound("Το ταξίδι δεν βρέθηκε.");
+            var userIdClaim = User.Claims.FirstOrDefault(c => c.Type == "ID" || c.Type == "Id");
+            if (userIdClaim == null) return Unauthorized("Δεν βρέθηκε ID χρήστη στο Token.");
+            var userId = int.Parse(userIdClaim.Value);
+            var trip = await _context.Trips.FirstOrDefaultAsync(t => t.TripId == dto.TripId && t.UserId == userId);
+
+            if (trip == null)
+                return NotFound("Το ταξίδι δεν βρέθηκε ή δεν έχετε δικαίωμα πρόσβασης.");
+
+            var businessExists = await _context.Business.AnyAsync(b => b.BusinessId == dto.BusinessId);
+            if (!businessExists)
+            {
+                return NotFound("Η επιχείρηση που προσπαθείτε να προσθέσετε δεν βρέθηκε στη βάση.");
+            }
+
+            if (dto.ScheduledTime < trip.StartDate || dto.ScheduledTime > trip.EndDate)
+            {
+                return BadRequest($"Η ημερομηνία δραστηριότητας πρέπει να είναι μεταξύ {trip.StartDate:dd/MM} και {trip.EndDate:dd/MM}.");
+            }
 
             var item = new TripItem
             {
                 TripId = dto.TripId,
                 BusinessId = dto.BusinessId,
-                ScheduledTime = dto.ScheduledTime
+                ScheduledTime = dto.ScheduledTime,
+                Title = dto.Title,
+                Description = dto.Description
             };
-            trip.CurrentCost += dto.EstimatedCost;
 
-            string warningMessage = "";
-            if (trip.CurrentCost > trip.TotalBudget)
-            {
-                warningMessage = "Warning: Έχετε ξεπεράσει τον προϋπολογισμό σας!";
-            }
+             
 
             _context.TripItems.Add(item);
             await _context.SaveChangesAsync();
 
-            return Ok(new { Message = "Η διαστηριότητα προστέθηκε!", Warning = warningMessage, NewTotal = trip.CurrentCost });
+            return Ok(new
+            {
+                Message = "Η δραστηριότητα προστέθηκε!"
+            });
         }
-
 
         [HttpPost("generate-mood")]
+        [Authorize]
         public async Task<IActionResult> GenerateMoodTrip([FromBody] MoodTripRequestDTO request)
         {
-            string[] tagsToSearch;
-
-            switch (request.Mood.ToLower())
+            try
             {
-                case "romantic":
-                    tagsToSearch = new[] { "Cozy", "View", "Wine", "Jazz", "Dinner" };
-                    break;
-                case "party":
-                    tagsToSearch = new[] { "Club", "Bar", "Dance", "Cocktail", "Late Night" };
-                    break;
-                case "adventure":
-                    tagsToSearch = new[] { "Hiking", "Sports", "Escape Room", "Activity", "Outdoor" };
-                    break;
-                case "relax":
-                    tagsToSearch = new[] { "Coffee", "Park", "Bookstore", "Spa", "Brunch" };
-                    break;
-                default:
-                    tagsToSearch = new[] { "Food", "Drink" };
-                    break;
-            }
+                var myBusinesses = await _context.Business
+                    .Where(b => b.City.ToLower() == request.City.ToLower())
+                    .ToListAsync();
+                string businessContext = string.Join(", ", myBusinesses.Select(b => $"{b.Name} ({b.Category})"));
+                var aiPlanJson = await _aiService.GetDetailedTripPlanAsync(request, businessContext);
 
-            int maxUserLevel = CalculateLevelFromBudget(request.Budget);
+                Console.WriteLine("DEBUG AI RESPONSE: " + aiPlanJson);
 
-            var cityBusinesses = await _context.Business
-                .Where(b => b.City == request.City)
-                .ToListAsync();
-
-            var matchingBusinesses = cityBusinesses
-                .Where(b =>
-                    ConvertPriceRangeToLevel(b.PriceRange) <= maxUserLevel
-                    &&
-                    tagsToSearch.Any(tag =>
-                        (b.MoodTags != null && b.MoodTags.Contains(tag)) ||
-                        (b.Category != null && b.Category.Contains(tag))
-                    )
-                )
-                .ToList();
-
-            if (!matchingBusinesses.Any())
-                return NotFound("Sorry, we couldn't find spots for this mood and budget in your city.");
-            var random = new Random();
-            var selectedSpots = matchingBusinesses.OrderBy(x => random.Next()).Take(2).ToList();
-
-            var suggestion = new TripResponseDTO
-            {
-                Title = $"A {request.Mood} Journey in {request.City}",
-                OwnerName = "SmoothJourney AI",
-                TotalBudget = request.Budget,
-                Activities = new List<TripItemResponseDTO>()
-            };
-
-            if (selectedSpots.Count > 0)
-            {
-                suggestion.Activities.Add(new TripItemResponseDTO
+                if (string.IsNullOrEmpty(aiPlanJson) || aiPlanJson.StartsWith("Error") || aiPlanJson.StartsWith("Exception"))
                 {
-                    BusinessName = selectedSpots[0].Name,
-                    City = selectedSpots[0].City,
-                    ScheduledTime = DateTime.Now.AddHours(1),
-                    Cost = EstimateCostFromPriceRange(selectedSpots[0].PriceRange)
-                });
-            }
+                    return StatusCode(500, $"AI Service Error: {aiPlanJson}");
+                }
 
-            if (selectedSpots.Count > 1)
-            {
-                suggestion.Activities.Add(new TripItemResponseDTO
+                var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
+                TripPlanDTO plan;
+
+                try
                 {
-                    BusinessName = selectedSpots[1].Name,
-                    City = selectedSpots[1].City,
-                    ScheduledTime = DateTime.Now.AddHours(3),
-                    Cost = EstimateCostFromPriceRange(selectedSpots[1].PriceRange)
-                });
+                    plan = JsonSerializer.Deserialize<TripPlanDTO>(aiPlanJson, options);
+                }
+                catch (JsonException jex)
+                {
+                    return BadRequest(new
+                    {
+                        error = "Το AI δεν έστειλε καθαρό JSON.",
+                        details = jex.Message,
+                        rawAiResponse = aiPlanJson
+                    });
+                }
+
+                if (plan == null || plan.Days == null) return BadRequest("Το πλάνο είναι κενό.");
+
+                foreach (var day in plan.Days)
+                {
+                    foreach (var act in day.Activities)
+                    {
+                        var match = myBusinesses.FirstOrDefault(b =>
+                            b.Name.ToLower().Trim() == act.Title.ToLower().Trim() ||
+                            act.Title.ToLower().Contains(b.Name.ToLower().Trim()));
+
+                        if (match != null)
+                        {
+                            act.BusinessId = match.BusinessId;
+                        }
+                    }
+                }
+
+                return Ok(new { plan });
             }
-
-            suggestion.CurrentCost = suggestion.Activities.Sum(a => a.Cost);
-            suggestion.RemainingBudget = suggestion.TotalBudget - suggestion.CurrentCost;
-
-            return Ok(suggestion);
-        }
-
-        private int CalculateLevelFromBudget(decimal budget)
-        {
-            if (budget <= 15) return 1;
-            if (budget <= 30) return 2;
-            if (budget <= 60) return 3;
-            return 4;
-        }
-
-        private int ConvertPriceRangeToLevel(string? priceRange)
-        {
-            if (string.IsNullOrEmpty(priceRange)) return 0;
-            return priceRange.Length;
-        }
-
-        private decimal EstimateCostFromPriceRange(string? priceRange)
-        {
-            int level = ConvertPriceRangeToLevel(priceRange);
-            switch (level)
+            catch (Exception ex)
             {
-                case 1: return 10.00m;
-                case 2: return 20.00m;
-                case 3: return 40.00m;
-                case 4: return 80.00m;
-                default: return 15.00m;
+                return StatusCode(500, $"Internal Error: {ex.Message}");
+            }
+        }
+
+        [HttpPost("save-ai-trip")]
+        [Authorize]
+        public async Task<IActionResult> SaveAiTrip([FromBody] SaveAiTripDTO dto)
+        {
+            var userIdClaim = User.Claims.FirstOrDefault(c => c.Type == "ID" || c.Type == "Id");
+            if (userIdClaim == null) return Unauthorized();
+            int userId = int.Parse(userIdClaim.Value);
+
+            using var transaction = await _context.Database.BeginTransactionAsync();
+
+            try
+            {
+                var trip = new Trips
+                {
+                    Title = dto.Title,
+                    City = dto.City,
+                    StartDate = dto.StartDate,
+                    EndDate = dto.EndDate,
+                    TotalBudget = dto.TotalBudget,
+                    UserId = userId,
+                    Mood = dto.Mood ?? "Relax",
+                    Description = dto.Description ?? $"AI Ταξίδι: {dto.City}"
+                };
+
+                _context.Trips.Add(trip);
+                await _context.SaveChangesAsync();
+
+                var cityBusinesses = await _context.Business
+                                    .Where(b => b.City.ToLower() == dto.City.ToLower())
+                                    .ToListAsync();
+
+                foreach (var dayDto in dto.Days)
+                {
+                    foreach (var actDto in dayDto.Activities)
+                    {
+                        var matchedBusiness = cityBusinesses
+                            .FirstOrDefault(b => b.Name.ToLower().Trim() == actDto.Title.ToLower().Trim());
+                        var tripItem = new TripItem
+                        {
+                            TripId = trip.TripId,
+                            Title = actDto.Title,
+                            Description = actDto.Description,
+                            ScheduledTime = trip.StartDate.AddDays(dayDto.Day - 1),
+                            BusinessId = matchedBusiness?.BusinessId
+                        };
+
+                        _context.TripItems.Add(tripItem);
+                    }
+                }
+
+                await _context.SaveChangesAsync();
+                await transaction.CommitAsync();
+
+                return Ok(new { Message = "Το ταξίδι και οι επιχειρήσεις αποθηκεύτηκαν!", TripId = trip.TripId });
+            }
+            catch (Exception ex)
+            {
+                await transaction.RollbackAsync();
+                return StatusCode(500, $"Internal Error: {ex.Message}");
             }
         }
 
@@ -190,18 +227,21 @@ namespace SmoothJorneyAPI.Controllers
         [Authorize]
         public async Task<IActionResult> CreateManualTrip([FromBody] CreateManualTripDTO dto)
         {
-            var userId = int.Parse(User.FindFirst("ID")?.Value ?? "0");
+            var userIdClaim = User.Claims.FirstOrDefault(c => c.Type == "ID" || c.Type == "Id");
+            if (userIdClaim == null) return Unauthorized("Δεν βρέθηκε ID χρήστη στο Token.");
+
+            var userId = int.Parse(userIdClaim.Value);
 
             var trip = new Trips
             {
                 UserId = userId,
-                Title = dto.Title,
-                Description = $"Ταξιδι στην {dto.City}",
+                Title = dto.Title ?? "",
                 StartDate = dto.StartDate,
                 EndDate = dto.EndDate,
                 TotalBudget = dto.TotalBudget,
-                CurrentCost = 0,
-                ShareToken = Guid.NewGuid().ToString()
+                City = dto.City,
+                Description = dto.Description ?? $"Ταξίδι στην {dto.City}",
+                Mood = dto.Mood ?? "Relax"
             };
 
             _context.Trips.Add(trip);
@@ -235,21 +275,83 @@ namespace SmoothJorneyAPI.Controllers
                 Title = dto.Title,
                 Description = dto.Description,
                 ScheduledTime = dto.ScheduledTime,
-                EstimatedCost = dto.Cost,
-                IsCompleted = false
             };
-
-            trip.CurrentCost += dto.Cost;
 
             _context.TripItems.Add(newItem);
             await _context.SaveChangesAsync();
 
             return Ok(new
             {
-                Message = "Activity added!",
-                NewCurrentCost = trip.CurrentCost,
-                RemainingBudget = trip.TotalBudget - trip.CurrentCost
+                Message = "Activity added!"
             });
+        }
+
+        [HttpGet("city/{cityName}")]
+        [Authorize]
+        public async Task<IActionResult> GetBusinessesByCity(string cityName)
+        {
+            if (string.IsNullOrWhiteSpace(cityName))
+            {
+                return BadRequest("Το όνομα της πόλης δεν μπορεί να είναι κενό.");
+            }
+
+            var businesses = await _context.Business
+                .Where(b => b.City != null && b.City.ToLower() == cityName.ToLower())
+                .ToListAsync();
+
+            if (!businesses.Any())
+            {
+                return Ok(new List<object>());
+            }
+
+            return Ok(businesses);
+        }
+
+        [HttpGet("my-trips")]
+        [Authorize]
+        public async Task<IActionResult> GetMyTrips()
+        {
+            var userIdClaim = User.Claims.FirstOrDefault(c => c.Type == "ID" || c.Type == "Id" || c.Type == ClaimTypes.NameIdentifier);
+            if (userIdClaim == null) return Unauthorized("Δεν βρέθηκε ID χρήστη στο Token.");
+
+            int userId = int.Parse(userIdClaim.Value);
+            var rawTrips = await _context.Trips
+                .Where(t => t.UserId == userId)
+                .Include(t => t.TripItems)
+                    .ThenInclude(ti => ti.Business)
+                .OrderByDescending(t => t.StartDate)
+                .AsSplitQuery()
+                .ToListAsync();
+
+            var uniqueTrips = rawTrips.DistinctBy(t => t.TripId).ToList();
+
+            var trips = uniqueTrips.Select(t => new
+            {
+                id = t.TripId,
+                destination = !string.IsNullOrEmpty(t.Title) ? t.Title : (t.City ?? "Άγνωστος Προορισμός"),
+                startDate = t.StartDate,
+                endDate = t.EndDate,
+                mood = t.Mood ?? "Δεν ορίστηκε",
+                totalBudget = t.TotalBudget,
+
+                imageUrl = t.TripItems.Where(ti => ti.Business != null && ti.Business.ImageUrl != null)
+                                      .Select(ti => ti.Business.ImageUrl)
+                                      .FirstOrDefault() ?? "",
+
+                activities = t.TripItems.Select(ti => new
+                {
+                    id = ti.TripItemId,
+                    day = (ti.ScheduledTime.Date - t.StartDate.Date).Days + 1,
+                    time = ti.ScheduledTime.ToString("HH:mm"),
+                    businessId = ti.BusinessId,
+                    businessName = ti.Business != null ? ti.Business.Name : ti.Title,
+                    businessCategory = ti.Business != null ? ti.Business.Category : "Custom",
+                    imageUrl = ti.Business != null ? ti.Business.ImageUrl : "",
+                    notes = ti.Description
+                }).OrderBy(a => a.day).ThenBy(a => a.time).ToList()
+            }).ToList();
+
+            return Ok(trips);
         }
     }
 }

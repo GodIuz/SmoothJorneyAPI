@@ -10,7 +10,7 @@ namespace SmoothJorneyAPI.Controllers
 {
     [Route("[controller]")]
     [ApiController]
-    //[Authorize(Roles = "User")]
+    [Authorize]
     public class FavouritesController : ControllerBase
     {
         private readonly SmoothJorneyAPIContext _context;

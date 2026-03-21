@@ -1,19 +1,11 @@
-﻿using System.ComponentModel.DataAnnotations;
-
-namespace SmoothJorneyAPI.DTO
+﻿namespace SmoothJorneyAPI.DTO
 {
-    public class AiActivityDTO
+    public class ActivityPlanDto
     {
-        [Required]
-        public string Time { get; set; } = "10:00";
-
-        [Required]
+        public string Time { get; set; } = string.Empty;
         public string Title { get; set; } = string.Empty;
-
         public string Description { get; set; } = string.Empty;
-
         public decimal EstimatedCost { get; set; }
-
         public int? BusinessId { get; set; }
     }
 }

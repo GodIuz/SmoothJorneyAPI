@@ -16,11 +16,7 @@ namespace SmoothJorneyAPI.Entities
         [Range(1, 5)]
         public int Rating { get; set; }
 
-        public double AverageRating { get; set; }
-
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
-
-        public string? Sentiment { get; set; }
 
         public int BusinessId { get; set; }
 
