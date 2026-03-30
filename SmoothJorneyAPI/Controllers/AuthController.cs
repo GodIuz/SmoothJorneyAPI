@@ -285,15 +285,12 @@ namespace SmoothJorneyAPI.Controllers
         [HttpGet("verify-email")]
         public async Task<IActionResult> VerifyEmail([FromQuery] string token)
         {
-            // Ψάχνουμε αν υπάρχει χρήστης με αυτό το token
             var user = await _context.Users.FirstOrDefaultAsync(u => u.VerificationToken == token);
 
             if (user == null)
             {
                 return BadRequest("Invalid or expired token.");
             }
-
-            // Ενεργοποίηση Χρήστη
             user.VerifiedAt = DateTime.UtcNow;
             user.EmailConfirmed = true;
             user.VerificationToken = null;
@@ -337,6 +334,34 @@ namespace SmoothJorneyAPI.Controllers
             var jwtToken = jwtTokenHandler.WriteToken(token);
 
             return (jwtToken, token.Id);
+        }
+
+        [HttpPost("change-password")]
+        [Authorize]
+        public async Task<IActionResult> ChangePassword([FromBody] ChangePasswordDTO dto)
+        {
+            var userIdClaim = User.Claims.FirstOrDefault(c => c.Type == "ID" || c.Type == "Id" || c.Type == ClaimTypes.NameIdentifier);
+            if (userIdClaim == null) return Unauthorized(new { message = "Δεν βρέθηκε ID χρήστη." });
+
+            int userId = int.Parse(userIdClaim.Value);
+            var user = await _context.Users.FindAsync(userId);
+
+            if (user == null) return NotFound(new { message = "Ο χρήστης δεν βρέθηκε." });
+
+            bool isCurrentPasswordValid = _hasher.VerifyPassword(user.PasswordHash, user.PasswordSalt, dto.CurrentPassword);
+
+            if (!isCurrentPasswordValid)
+            {
+                return BadRequest(new { message = "Ο τρέχων κωδικός είναι λανθασμένος." });
+            }
+
+            var (newHash, newSalt) = _hasher.HashPassword(dto.NewPassword);
+            user.PasswordHash = newHash;
+            user.PasswordSalt = newSalt;
+
+            await _context.SaveChangesAsync();
+
+            return Ok(new { message = "Ο κωδικός άλλαξε επιτυχώς." });
         }
     }
 }

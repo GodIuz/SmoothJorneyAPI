@@ -76,7 +76,7 @@ namespace SmoothJorneyAPI.Controllers
         public async Task<ActionResult<BusinessDetailDTO>> GetBusinessById(int id)
         {
             var business = await _context.Business
-                .Include(b => b.ImageUrl)
+                //.Include(b => b.ImageUrl)
                 .FirstOrDefaultAsync(b => b.BusinessId == id);
 
             if (business == null) return NotFound("Η Επιχείρηση δεν βρέθηκε");
@@ -268,7 +268,8 @@ namespace SmoothJorneyAPI.Controllers
                                        b.PriceLevel,
                                        b.PriceRange,
                                        b.AverageRating,
-                                       Rating = b.Reviews.Average(r => r.Rating) ,
+                                       b.ImageUrl,
+                                       Rating = b.Reviews.Average(r => r.Rating),
                                        ReviewsCount = b.Reviews.Count
                                    })
                                    .OrderByDescending(x => x.Rating)
@@ -281,6 +282,7 @@ namespace SmoothJorneyAPI.Controllers
                 CategoryType = b.CategoryType,
                 City = b.City,
                 Address = b.Address,
+                ImageUrl = b.ImageUrl,
                 PriceLevel = b.PriceLevel,
                 AverageRating = (decimal)b.AverageRating
             }).ToList();
@@ -289,7 +291,7 @@ namespace SmoothJorneyAPI.Controllers
         }
 
         [HttpGet("Stats")]
-        //[Authorize(Roles = "Admin")]
+        [Authorize]
         public async Task<ActionResult<DashboardStatsDTO>> GetStats()
         {
             var userCount = await _context.Users.CountAsync();
@@ -351,6 +353,62 @@ namespace SmoothJorneyAPI.Controllers
             };
 
             return Ok(stats);
+        }
+
+
+        [HttpGet("category/{categoryType}")]
+        public async Task<IActionResult> GetBusinessesByCategory(string categoryType)
+        {
+            var type = categoryType.ToLower();
+            var query = _context.Business.AsQueryable();
+
+            switch (type)
+            {
+                case "accommodation":
+                    query = query.Where(b => EF.Functions.Like(b.CategoryType, "%Ξενοδοχ%") ||
+                                             EF.Functions.Like(b.CategoryType, "%Hotel%") ||
+                                             EF.Functions.Like(b.CategoryType, "%Διαμον%"));
+                    break;
+
+                case "restaurants":
+                    query = query.Where(b => EF.Functions.Like(b.CategoryType, "%Εστιατ%") ||
+                                             EF.Functions.Like(b.CategoryType, "%Μπερκ%") ||
+                                             EF.Functions.Like(b.CategoryType, "%Ταβέρν%") ||
+                                             EF.Functions.Like(b.CategoryType, "%Restaur%") ||
+                                             EF.Functions.Like(b.CategoryType, "%Food%"));
+                    break;
+
+                case "sights":
+                    query = query.Where(b => EF.Functions.Like(b.CategoryType, "%Αξιοθ%") ||
+                                             EF.Functions.Like(b.CategoryType, "%Μουσεί%") ||
+                                             EF.Functions.Like(b.CategoryType, "%Sight%"));
+                    break;
+
+                case "clubs":
+                    query = query.Where(b => EF.Functions.Like(b.CategoryType, "%Κλαμπ%") ||
+                                             EF.Functions.Like(b.CategoryType, "%Μπαρ%") ||
+                                             EF.Functions.Like(b.CategoryType, "%Bar%") ||
+                                             EF.Functions.Like(b.CategoryType, "%Club%"));
+                    break;
+
+                default:
+                    return NotFound(new { message = "Άγνωστη κατηγορία." });
+            }
+
+            var businesses = await query
+                .Select(b => new {
+                    id = b.BusinessId,
+                    name = b.Name,
+                    categoryType = b.CategoryType,
+                    city = b.City,
+                    imageUrl = b.ImageUrl,
+                    rating = b.AverageRating,
+                    priceLevel = b.PriceRange ?? "€€",
+                    reviewsCount = b.Reviews.Count()
+                })
+                .ToListAsync();
+
+            return Ok(businesses);
         }
     }
 }

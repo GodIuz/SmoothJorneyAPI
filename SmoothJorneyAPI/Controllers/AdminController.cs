@@ -95,39 +95,6 @@ namespace SmoothJorneyAPI.Controllers
             return Ok(businesses);
         }
 
-        [HttpGet("reviews")]
-        [Authorize(Roles = "Admin")]
-        public async Task<IActionResult> GetAllReviews()
-        {
-            var reviews = await _context.Reviews
-                .Include(r => r.User)
-                .Include(r => r.Business)
-                .OrderByDescending(r => r.CreatedAt)
-                .Select(r => new
-                {
-                    r.Id,
-                    User = r.User.UserName,
-                    Business = r.Business.Name,
-                    r.Rating,
-                    r.Content,
-                    r.CreatedAt
-                })
-                .ToListAsync();
-            return Ok(reviews);
-        }
-
-        [HttpDelete("reviews/{id}")]
-        [Authorize(Roles = "Admin")]
-        public async Task<IActionResult> DeleteReview(int id)
-        {
-            var review = await _context.Reviews.FindAsync(id);
-            if (review == null) return NotFound();
-
-            _context.Reviews.Remove(review);
-            await _context.SaveChangesAsync();
-            return Ok(new { Message = "Η αξιολόγηση σβήστηκε" });
-        }
-
         [HttpPut("update/{id}")]
         [Authorize(Roles = "Admin")]
         public async Task<IActionResult> UpdateBusiness(int id, [FromBody] UpdateBusinessDTO dto)
@@ -199,5 +166,7 @@ namespace SmoothJorneyAPI.Controllers
             await _context.SaveChangesAsync();
             return Ok(new { Message = "User updated" });
         }
+
+        
     }
 }

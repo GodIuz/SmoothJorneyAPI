@@ -17,6 +17,7 @@ namespace SmoothJorneyAPI.Data
         public DbSet<Business> Business { get; set; } = default!;
         public DbSet<Reviews> Reviews { get; set; } = default!;
         public DbSet<Favorite> Favorites { get; set; } = default!;
+        public DbSet<ContactMessage> ContactMessages { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
