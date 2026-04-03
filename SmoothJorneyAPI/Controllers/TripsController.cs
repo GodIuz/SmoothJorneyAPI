@@ -182,7 +182,8 @@ namespace SmoothJorneyAPI.Controllers
                     TotalBudget = dto.TotalBudget,
                     UserId = userId,
                     Mood = dto.Mood ?? "Relax",
-                    Description = dto.Description ?? $"AI Ταξίδι: {dto.City}"
+                    Description = dto.Description ?? $"AI Ταξίδι: {dto.City}",
+                    ImageUrl = ""
                 };
 
                 _context.Trips.Add(trip);
@@ -192,12 +193,25 @@ namespace SmoothJorneyAPI.Controllers
                                     .Where(b => b.City.ToLower() == dto.City.ToLower())
                                     .ToListAsync();
 
+                bool coverImageSet = false;
+
                 foreach (var dayDto in dto.Days)
                 {
                     foreach (var actDto in dayDto.Activities)
                     {
                         var matchedBusiness = cityBusinesses
-                            .FirstOrDefault(b => b.Name.ToLower().Trim() == actDto.Title.ToLower().Trim());
+                            .FirstOrDefault(b =>
+                                b.Name.ToLower().Trim().Contains(actDto.Title.ToLower().Trim()) ||
+                                actDto.Title.ToLower().Trim().Contains(b.Name.ToLower().Trim())
+                            );
+
+                        if (!coverImageSet && matchedBusiness != null && !string.IsNullOrEmpty(matchedBusiness.ImageUrl))
+                        {
+                            trip.ImageUrl = matchedBusiness.ImageUrl.Replace("\\", "/");
+                            _context.Entry(trip).State = EntityState.Modified;
+                            coverImageSet = true;
+                        }
+
                         var tripItem = new TripItem
                         {
                             TripId = trip.TripId,
@@ -214,12 +228,12 @@ namespace SmoothJorneyAPI.Controllers
                 await _context.SaveChangesAsync();
                 await transaction.CommitAsync();
 
-                return Ok(new { Message = "Το ταξίδι και οι επιχειρήσεις αποθηκεύτηκαν!", TripId = trip.TripId });
+                return Ok(new { message = "Το ταξίδι αποθηκεύτηκε!", tripId = trip.TripId });
             }
             catch (Exception ex)
             {
                 await transaction.RollbackAsync();
-                return StatusCode(500, $"Internal Error: {ex.Message}");
+                return StatusCode(500, new { message = "Σφάλμα αποθήκευσης", details = ex.Message });
             }
         }
 
@@ -312,9 +326,10 @@ namespace SmoothJorneyAPI.Controllers
         public async Task<IActionResult> GetMyTrips()
         {
             var userIdClaim = User.Claims.FirstOrDefault(c => c.Type == "ID" || c.Type == "Id" || c.Type == ClaimTypes.NameIdentifier);
-            if (userIdClaim == null) return Unauthorized("Δεν βρέθηκε ID χρήστη στο Token.");
+            if (userIdClaim == null) return Unauthorized(new { message = "Δεν βρέθηκε ID χρήστη στο Token." });
 
             int userId = int.Parse(userIdClaim.Value);
+
             var rawTrips = await _context.Trips
                 .Where(t => t.UserId == userId)
                 .Include(t => t.TripItems)
@@ -323,20 +338,15 @@ namespace SmoothJorneyAPI.Controllers
                 .AsSplitQuery()
                 .ToListAsync();
 
-            var uniqueTrips = rawTrips.DistinctBy(t => t.TripId).ToList();
-
-            var trips = uniqueTrips.Select(t => new
+            var trips = rawTrips.Select(t => new
             {
                 id = t.TripId,
                 destination = !string.IsNullOrEmpty(t.Title) ? t.Title : (t.City ?? "Άγνωστος Προορισμός"),
                 startDate = t.StartDate,
                 endDate = t.EndDate,
-                mood = t.Mood ?? "Δεν ορίστηκε",
+                mood = t.Mood ?? "Relax",
                 totalBudget = t.TotalBudget,
-
-                imageUrl = t.TripItems.Where(ti => ti.Business != null && ti.Business.ImageUrl != null)
-                                      .Select(ti => ti.Business.ImageUrl)
-                                      .FirstOrDefault() ?? "",
+                imageUrl = !string.IsNullOrEmpty(t.ImageUrl) ? t.ImageUrl.Replace("\\", "/") : "",
 
                 activities = t.TripItems.Select(ti => new
                 {
@@ -346,12 +356,56 @@ namespace SmoothJorneyAPI.Controllers
                     businessId = ti.BusinessId,
                     businessName = ti.Business != null ? ti.Business.Name : ti.Title,
                     businessCategory = ti.Business != null ? ti.Business.Category : "Custom",
-                    imageUrl = ti.Business != null ? ti.Business.ImageUrl : "",
+                    imageUrl = (ti.Business != null && !string.IsNullOrEmpty(ti.Business.ImageUrl))
+                               ? ti.Business.ImageUrl.Replace("\\", "/")
+                               : "",
                     notes = ti.Description
                 }).OrderBy(a => a.day).ThenBy(a => a.time).ToList()
             }).ToList();
 
             return Ok(trips);
         }
+
+        [HttpPost("update-tracker")]
+        [Authorize]
+        public async Task<IActionResult> UpdateTrackerProgress([FromBody] List<TrackerUpdateDΤΟ> updates)
+        {
+            if (updates == null || updates.Count == 0)
+            {
+                return BadRequest(new { message = "Δεν δόθηκαν δεδομένα για ενημέρωση." });
+            }
+
+            var userIdString = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (!int.TryParse(userIdString, out int currentUserId))
+            {
+                return Unauthorized(new { message = "Μη έγκυρο token χρήστη." });
+            }
+
+            try
+            {
+                var itemIds = updates.Select(u => u.TripItemId).ToList();
+                var updateDictionary = updates.ToDictionary(u => u.TripItemId, u => u.IsVisited);
+                var itemsToUpdate = await _context.TripItems
+                    .Include(t => t.Trip)
+                    .Where(t => itemIds.Contains(t.TripItemId) && t.Trip.UserId == currentUserId)
+                    .ToListAsync();
+
+                foreach (var item in itemsToUpdate)
+                {
+                    if (updateDictionary.TryGetValue(item.TripItemId, out bool isVisited))
+                    {
+                        item.IsVisited = isVisited;
+                    }
+                }
+
+                await _context.SaveChangesAsync();
+
+                return Ok(new { message = "Η πρόοδος αποθηκεύτηκε επιτυχώς." });
+            }
+            catch (Exception ex)
+            {
+                 return StatusCode(500, new { message = "Εσωτερικό σφάλμα κατά την ενημέρωση της προόδου." });
+            }
+        }
     }
-}
+ }

@@ -1,5 +1,6 @@
 ﻿using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+using System.Text.Json.Serialization;
 
 namespace SmoothJorneyAPI.Entities
 {
@@ -41,7 +42,8 @@ namespace SmoothJorneyAPI.Entities
 
         [Required]
         public string? Role { get; set; } = "User";
-        public DateTime CreateAt { get; set; } = DateTime.UtcNow;
+        [JsonPropertyName("createAt")]
+        public DateTime CreateAt { get; set; }
         public bool EmailConfirmed { get; set; } = false;
         public string? EmailVerificationToken { get; set; }
         public string? ResetPasswordToken { get; set; }

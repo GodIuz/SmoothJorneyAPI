@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using SmoothJorneyAPI.Data;
 
@@ -11,9 +12,11 @@ using SmoothJorneyAPI.Data;
 namespace SmoothJorneyAPI.Migrations
 {
     [DbContext(typeof(SmoothJorneyAPIContext))]
-    partial class SmoothJorneyAPIContextModelSnapshot : ModelSnapshot
+    [Migration("20260330212120_AddTrackerAndBudgetToTripItems")]
+    partial class AddTrackerAndBudgetToTripItems
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -263,8 +266,7 @@ namespace SmoothJorneyAPI.Migrations
                         .HasColumnType("nvarchar(100)");
 
                     b.Property<DateTime>("CreateAt")
-                        .HasColumnType("datetime2")
-                        .HasJsonPropertyName("createAt");
+                        .HasColumnType("datetime2");
 
                     b.Property<DateOnly>("DateOfBirth")
                         .HasColumnType("date");
@@ -355,9 +357,6 @@ namespace SmoothJorneyAPI.Migrations
 
                     b.Property<DateTime>("EndDate")
                         .HasColumnType("datetime2");
-
-                    b.Property<string>("ImageUrl")
-                        .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("Mood")
                         .HasMaxLength(50)

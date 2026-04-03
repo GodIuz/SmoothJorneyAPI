@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Authorization;
+﻿    using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
@@ -34,9 +34,9 @@ namespace SmoothJorneyAPI.Controllers
         [HttpPost("register")]
         public async Task<IActionResult> Register(RegisterDTO dto)
         {
-            if (await _context.Users.AnyAsync(u => u.UserName == dto.Username))
+            if (await _context.Users.AnyAsync(u => u.Email == dto.Email))
             {
-                return BadRequest("User already exists.");
+                return BadRequest("Ο χρήστης υπάρχει ήδη.");
             }
 
             var securityData = _hasher.HashPassword(dto.Password);
@@ -44,7 +44,6 @@ namespace SmoothJorneyAPI.Controllers
             {
                 UserName = dto.Username,
                 Email = dto.Email,
-                EmailConfirmed = false,
                 FirstName = dto.FirstName,
                 LastName = dto.LastName,
                 PasswordHash = securityData.Hash,
@@ -53,13 +52,15 @@ namespace SmoothJorneyAPI.Controllers
                 City = dto.City,
                 DateOfBirth = dto.DateOFBirth,
                 Gender = dto.Gender,
-                Role = dto.Role
+                Role = "User",
+                EmailConfirmed = false,
+                CreateAt = DateTime.UtcNow
             };
 
             _context.Users.Add(user);
             await _context.SaveChangesAsync();
 
-            return Ok(new { Message = "User registered successfully!" });
+            return Ok(new { Message = "Ο χρήστης εγγράφηκε με επιτυχία!" });
         }
 
         [HttpPost("login")]
@@ -69,11 +70,11 @@ namespace SmoothJorneyAPI.Controllers
         {
             var user = await _context.Users.FirstOrDefaultAsync(u => u.Email == dto.Email);
 
-            if (user == null) return Unauthorized("Invalid Email or Password");
+            if (user == null) return Unauthorized("Μη έγκυρο email ή κωδικό πρόσβασης");
             if (user.LockoutEnd != null && user.LockoutEnd > DateTime.UtcNow)
             {
                 var timeLeft = user.LockoutEnd - DateTime.UtcNow;
-                return Unauthorized($"Account is locked. Try again in {timeLeft.Value.Minutes} minutes and {timeLeft.Value.Seconds} seconds.");
+                return Unauthorized($"Ο λογαριασμός είναι κλειδωμένος. Δοκιμάστε ξανά στο {timeLeft.Value.Minutes} λεπτά και{timeLeft.Value.Seconds} δευτερόλεπτα.");
             }
             var isCorrect = _hasher.VerifyPassword(user.PasswordHash, user.PasswordSalt, dto.Password);
 
@@ -87,13 +88,13 @@ namespace SmoothJorneyAPI.Controllers
                     user.FailedLoginAttempts = 0;
 
                     await _context.SaveChangesAsync();
-                    return Unauthorized("Account locked due to too many failed attempts. Try again in 5 minutes.");
+                    return Unauthorized("Ο λογαριασμός κλειδώθηκε λόγω πάρα πολλών αποτυχημένων προσπαθειών. Δοκιμάστε ξανά σε 5 λεπτά.");
                 }
 
                 await _context.SaveChangesAsync();
 
                 int attemptsLeft = 3 - user.FailedLoginAttempts;
-                return Unauthorized($"Invalid Password. You have {attemptsLeft} attempts left before lockout.");
+                return Unauthorized($"Μη έγκυρος κωδικός πρόσβασης. Έχετε {attemptsLeft} προσπάθειες που απομένουν πριν από το κλείδωμα.");
             }
 
             if (user.FailedLoginAttempts > 0 || user.LockoutEnd != null)
@@ -139,7 +140,7 @@ namespace SmoothJorneyAPI.Controllers
         {
             var user = await _context.Users.FirstOrDefaultAsync(u => u.Email == dto.Email);
             if (user == null)
-                return Ok(new { Message = "If user exists, reset instructions have been sent to your email." });
+                return Ok(new { Message = "Εάν υπάρχει χρήστης, έχουν σταλεί οδηγίες επαναφοράς στο email σας." });
 
             user.PasswordResetToken = CreateRandomToken();
             user.ResetTokenExpires = DateTime.UtcNow.AddHours(1);
@@ -163,11 +164,11 @@ namespace SmoothJorneyAPI.Controllers
             {
                 await _emailService.SendEmailAsync(user.Email, emailSubject, emailBody);
 
-                return Ok(new { Message = "Password reset link has been sent to your email." });
+                return Ok(new { Message = "Ο σύνδεσμος επαναφοράς κωδικού πρόσβασης έχει σταλεί στο email σας." });
             }
             catch (Exception ex)
             {
-                return BadRequest("Could not send email. Please try again later. Error: " + ex.Message);
+                return BadRequest("Δεν ήταν δυνατή η αποστολή email. Δοκιμάστε ξανά αργότερα. Σφάλμα: " + ex.Message);
             }
         }
 
@@ -179,17 +180,17 @@ namespace SmoothJorneyAPI.Controllers
 
             if (storedRefreshToken == null)
             {
-                return BadRequest(new { Message = "Refresh token does not exist" });
+                return BadRequest(new { Message = "Το διακριτικό ανανέωσης δεν υπάρχει" });
             }
 
             if (storedRefreshToken.ExpiryDate < DateTime.UtcNow)
             {
-                return BadRequest(new { Message = "Refresh token has expired, please login again" });
+                return BadRequest(new { Message = "Το διακριτικό ανανέωσης έχει λήξει, συνδεθείτε ξανά." });
             }
 
             if (storedRefreshToken.isRevoked || storedRefreshToken.isUsed)
             {
-                return BadRequest(new { Message = "Invalid refresh token" });
+                return BadRequest(new { Message = "Μη έγκυρο διακριτικό ανανέωσης" });
             }
 
             storedRefreshToken.isUsed = true;
@@ -197,7 +198,7 @@ namespace SmoothJorneyAPI.Controllers
             await _context.SaveChangesAsync();
 
             var user = await _context.Users.FindAsync(storedRefreshToken.UserId);
-            if (user == null) return BadRequest(new { Message = "User not found" });
+            if (user == null) return BadRequest(new { Message = "Ο χρήστης δεν βρέθηκε" });
             var authResult = GenerateJwtToken(user);
 
             var newRefreshToken = new RefreshTokens
@@ -231,7 +232,7 @@ namespace SmoothJorneyAPI.Controllers
             var user = await _context.Users.FirstOrDefaultAsync(u => u.PasswordResetToken == dto.Token);
             if (user == null || user.ResetTokenExpires < DateTime.UtcNow)
             {
-                return BadRequest("Invalid or expired token.");
+                return BadRequest("Μη έγκυρο ή ληγμένο διακριτικό.");
             }
 
             var securityData = _hasher.HashPassword(dto.NewPassword);
@@ -241,23 +242,26 @@ namespace SmoothJorneyAPI.Controllers
             user.ResetTokenExpires = null;
 
             await _context.SaveChangesAsync();
-            return Ok(new { Message = "Password changed successfully!" });
+            return Ok(new { Message = "Ο κωδικός άλλαξε με επιτυχία!" });
         }
 
         [HttpPost("send-verification-email")]
         [Authorize]
-        public async Task<IActionResult> SendVerificationEmail(string email)
+        public async Task<IActionResult> SendVerificationEmail([FromBody] EmailRequestDTO request)
         {
-            var user = await _context.Users.FirstOrDefaultAsync(u => u.Email == email);
+            var user = await _context.Users.FirstOrDefaultAsync(u => u.Email == request.Email);
 
-            if (user == null) return BadRequest("User not found");
-            if (user.EmailConfirmed) return BadRequest("Email is already verified.");
+            if (user == null) return BadRequest(new { message = "Ο χρήστης δεν βρέθηκε" });
+
+            if (user.EmailConfirmed == true) {
+                return Ok(new { message = "Το email έχει ήδη επαληθευτεί." });
+            }
 
             var verifyToken = CreateRandomToken();
             user.VerificationToken = verifyToken;
             await _context.SaveChangesAsync();
 
-            var verifyLink = $"https://localhost:7003/Auth/verify-email?token={verifyToken}";
+            var verifyLink = $"https://localhost:7000/Auth/verify-email?token={verifyToken}";
 
             var body = $@"
                 <div style='background-color: #f4f4f4; padding: 20px; font-family: Arial;'>
@@ -274,11 +278,11 @@ namespace SmoothJorneyAPI.Controllers
             try
             {
                 await _emailService.SendEmailAsync(user.Email, "Επιβεβαίωση Email", body);
-                return Ok(new { Message = "Verification email sent! Check your inbox." });
+                return Ok(new { message = "Το email επαλήθευσης στάλθηκε! Ελέγξτε τα εισερχόμενά σας." });
             }
             catch (Exception ex)
             {
-                return BadRequest("Error sending email: " + ex.Message);
+                return BadRequest(new {message = "Σφάλμα κατά την αποστολή email:" + ex.Message });
             }
         }
 
@@ -289,7 +293,7 @@ namespace SmoothJorneyAPI.Controllers
 
             if (user == null)
             {
-                return BadRequest("Invalid or expired token.");
+                return BadRequest("Μη έγκυρο ή ληγμένο διακριτικό.");
             }
             user.VerifiedAt = DateTime.UtcNow;
             user.EmailConfirmed = true;
@@ -297,7 +301,7 @@ namespace SmoothJorneyAPI.Controllers
 
             await _context.SaveChangesAsync();
 
-            return Ok("Email confirmed successfully! You can now close this tab and login.");
+            return Ok("Το email επιβεβαιώθηκε με επιτυχία! Μπορείτε τώρα να κλείσετε αυτήν την καρτέλα και να συνδεθείτε.");
         }
 
         private string CreateRandomToken()

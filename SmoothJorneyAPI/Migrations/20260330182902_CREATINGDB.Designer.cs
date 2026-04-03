@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using SmoothJorneyAPI.Data;
 
@@ -11,9 +12,11 @@ using SmoothJorneyAPI.Data;
 namespace SmoothJorneyAPI.Migrations
 {
     [DbContext(typeof(SmoothJorneyAPIContext))]
-    partial class SmoothJorneyAPIContextModelSnapshot : ModelSnapshot
+    [Migration("20260330182902_CREATINGDB")]
+    partial class CREATINGDB
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -101,45 +104,6 @@ namespace SmoothJorneyAPI.Migrations
                     b.HasKey("BusinessId");
 
                     b.ToTable("Business");
-                });
-
-            modelBuilder.Entity("SmoothJorneyAPI.Entities.ContactMessage", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("Email")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("FirstName")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
-
-                    b.Property<string>("LastName")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
-
-                    b.Property<string>("MessageBody")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("Subject")
-                        .IsRequired()
-                        .HasMaxLength(200)
-                        .HasColumnType("nvarchar(200)");
-
-                    b.HasKey("Id");
-
-                    b.ToTable("ContactMessages");
                 });
 
             modelBuilder.Entity("SmoothJorneyAPI.Entities.Favorite", b =>
@@ -244,6 +208,40 @@ namespace SmoothJorneyAPI.Migrations
                     b.ToTable("Reviews");
                 });
 
+            modelBuilder.Entity("SmoothJorneyAPI.Entities.TripItem", b =>
+                {
+                    b.Property<int>("TripItemId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("TripItemId"));
+
+                    b.Property<int?>("BusinessId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("ScheduledTime")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int>("TripId")
+                        .HasColumnType("int");
+
+                    b.HasKey("TripItemId");
+
+                    b.HasIndex("BusinessId");
+
+                    b.HasIndex("TripId");
+
+                    b.ToTable("TripItems");
+                });
+
             modelBuilder.Entity("SmoothJorneyAPI.Entities.Users", b =>
                 {
                     b.Property<int>("UserId")
@@ -263,8 +261,7 @@ namespace SmoothJorneyAPI.Migrations
                         .HasColumnType("nvarchar(100)");
 
                     b.Property<DateTime>("CreateAt")
-                        .HasColumnType("datetime2")
-                        .HasJsonPropertyName("createAt");
+                        .HasColumnType("datetime2");
 
                     b.Property<DateOnly>("DateOfBirth")
                         .HasColumnType("date");
@@ -356,9 +353,6 @@ namespace SmoothJorneyAPI.Migrations
                     b.Property<DateTime>("EndDate")
                         .HasColumnType("datetime2");
 
-                    b.Property<string>("ImageUrl")
-                        .HasColumnType("nvarchar(max)");
-
                     b.Property<string>("Mood")
                         .HasMaxLength(50)
                         .HasColumnType("nvarchar(50)");
@@ -385,49 +379,6 @@ namespace SmoothJorneyAPI.Migrations
                     b.HasIndex("UserId");
 
                     b.ToTable("Trips");
-                });
-
-            modelBuilder.Entity("TripItem", b =>
-                {
-                    b.Property<int>("TripItemId")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("TripItemId"));
-
-                    b.Property<int?>("BusinessId")
-                        .HasColumnType("int");
-
-                    b.Property<decimal?>("Cost")
-                        .HasColumnType("decimal(18,2)");
-
-                    b.Property<string>("Description")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("Duration")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<bool>("IsVisited")
-                        .HasColumnType("bit");
-
-                    b.Property<DateTime>("ScheduledTime")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("Title")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<int>("TripId")
-                        .HasColumnType("int");
-
-                    b.HasKey("TripItemId");
-
-                    b.HasIndex("BusinessId");
-
-                    b.HasIndex("TripId");
-
-                    b.ToTable("TripItems");
                 });
 
             modelBuilder.Entity("SmoothJorneyAPI.Entities.Favorite", b =>
@@ -477,18 +428,7 @@ namespace SmoothJorneyAPI.Migrations
                     b.Navigation("User");
                 });
 
-            modelBuilder.Entity("SmoothJorneyAPI.Trips", b =>
-                {
-                    b.HasOne("SmoothJorneyAPI.Entities.Users", "User")
-                        .WithMany("Trips")
-                        .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("User");
-                });
-
-            modelBuilder.Entity("TripItem", b =>
+            modelBuilder.Entity("SmoothJorneyAPI.Entities.TripItem", b =>
                 {
                     b.HasOne("SmoothJorneyAPI.Entities.Business", "Business")
                         .WithMany()
@@ -503,6 +443,17 @@ namespace SmoothJorneyAPI.Migrations
                     b.Navigation("Business");
 
                     b.Navigation("Trip");
+                });
+
+            modelBuilder.Entity("SmoothJorneyAPI.Trips", b =>
+                {
+                    b.HasOne("SmoothJorneyAPI.Entities.Users", "User")
+                        .WithMany("Trips")
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("SmoothJorneyAPI.Entities.Business", b =>

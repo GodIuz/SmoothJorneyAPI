@@ -8,6 +8,6 @@ namespace SmoothJorneyAPI.Interfaces
 
         Task<string> GetDetailedTripPlanAsync(MoodTripRequestDTO req, string businessContext);
 
-        Task<string> GenerateTextAsync(string prompt);
+        Task<string> GenerateTextAsync(string systemPrompt, string userPrompt);
     }
 }

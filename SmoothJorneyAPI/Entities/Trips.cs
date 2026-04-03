@@ -30,6 +30,8 @@ namespace SmoothJorneyAPI
         [Column(TypeName = "decimal(18,2)")]
         public decimal TotalBudget { get; set; }
 
+        public string? ImageUrl { get; set; }
+
         public int UserId { get; set; }
 
         [ForeignKey("UserId")]

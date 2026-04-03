@@ -19,57 +19,59 @@ namespace SmoothJorneyAPI.Services
             _apiKey = options.Value.GroqApiKey;
         }
 
-        
+
         public async Task<string> GetDetailedTripPlanAsync(MoodTripRequestDTO req, string businessContext)
         {
             int totalDays = (req.EndDate - req.StartDate).Days + 1;
+            if (totalDays <= 0) totalDays = 1;
+
             var systemPrompt = $@"
-                        Είσαι ένας επαγγελματίας ταξιδιωτικός πράκτορας. 
-                        Ο χρήστης θέλει να ταξιδέψει στην πόλη {req.City} με διάθεση '{req.Mood}'.
-                        Το ταξίδι θα διαρκέσει ΑΚΡΙΒΩΣ {req.Days} ΗΜΕΡΕΣ.
+        Είσαι ένας κορυφαίος ταξιδιωτικός πράκτορας. 
+        Πρέπει να φτιάξεις ένα ταξιδιωτικό πλάνο για την πόλη {req.City} με διάθεση '{req.Mood}'.
+        Έχεις στη διάθεσή σου τις εξής επιχειρήσεις από τη βάση: {businessContext}
 
-                        Έχεις στη διάθεσή σου τις εξής επιχειρήσεις από τη βάση δεδομένων:
-                        {businessContext}
-
-                        ΟΔΗΓΙΕΣ:
-                        1. Πρέπει ΥΠΟΧΡΕΩΤΙΚΑ να επιστρέψεις ένα πλάνο που να καλύπτει ΚΑΙ ΤΙΣ {req.Days} ΗΜΕΡΕΣ. ΜΗΝ σταματήσεις στην 1η ημέρα.
-                        2. Ο πίνακας 'days' στο JSON ΠΡΕΠΕΙ να έχει ακριβώς {req.Days} αντικείμενα.
-                        3. Κάθε ημέρα πρέπει να έχει τουλάχιστον 2-3 δραστηριότητες.
-                        4. Αν δεν φτάνουν οι επιχειρήσεις που σου έδωσα για όλες τις μέρες, συμπλήρωσε το πρόγραμμα με γενικές δραστηριότητες (π.χ. 'Βόλτα στο κέντρο', 'Χαλάρωση στο πάρκο').
-
-                        Επίστρεψε ΜΟΝΟ το JSON σε αυτή τη μορφή (χωρίς markdown, χωρίς έξτρα κείμενο):
-                        {{
-                          ""days"": [
-                            {{
-                              ""day"": 1,
-                              ""activities"": [
-                                {{ ""title"": ""Όνομα επιχείρησης ή δραστηριότητας"", ""time"": ""10:00"", ""description"": ""Περιγραφή..."" }}
-                              ]
-                            }},
-                            // ... ΠΡΕΠΕΙ να συνεχίσεις για τη μέρα 2, 3 κ.ο.κ μέχρι τη μέρα {req.Days}
-                          ]
-                        }}
-                        ";
+        ΟΔΗΓΙΕΣ:
+        1. Το ταξίδι διαρκεί {totalDays} ημέρες. Πρέπει να δημιουργήσεις ΑΚΡΙΒΩΣ {totalDays} ημέρες στο πρόγραμμα.
+        2. Κάθε ημέρα να έχει 2-3 δραστηριότητες.
+        3. ΛΟΓΙΣΤΙΚΑ ΞΕΝΟΔΟΧΕΙΟΥ: Στην Ημέρα 1, η πρώτη δραστηριότητα ΠΡΕΠΕΙ να είναι το 'Check-in στο Κατάλυμα'. Στην Ημέρα {totalDays} (την τελευταία), η τελευταία δραστηριότητα ΠΡΕΠΕΙ να είναι το 'Check-out & Αναχώρηση'.
+        4. Επίστρεψε ΜΟΝΟ ΕΓΚΥΡΟ JSON.
+        
+        ΔΟΜΗ JSON ΠΟΥ ΠΡΕΠΕΙ ΝΑ ΑΚΟΛΟΥΘΗΣΕΙΣ:
+        {{
+            ""days"": [
+            {{
+                ""day"": 1,
+                ""activities"": [
+                {{ 
+                    ""title"": ""Όνομα δραστηριότητας"", 
+                    ""time"": ""10:00"", 
+                    ""duration"": ""2 ώρες"", 
+                    ""description"": ""Περιγραφή"" 
+                }}
+                ]
+            }}
+            ]
+        }}";
 
             var userPrompt = $@"Σχεδιάστε ένα ταξίδι {req.Mood} στην {req.City}. 
-                                Προϋπολογισμός: {req.TotalBudget}€ συνολικά για {req.NumberOfPeople} άτομα.
-                                Ημερομηνίες: {req.StartDate:dd/MM/yyyy} έως {req.EndDate:dd/MM/yyyy}.
-                                Δημιουργήστε ακριβώς {totalDays} ημέρες δραστηριοτήτων.";
-
-            var response = await CallLlmAsync(systemPrompt, userPrompt);
-            return CleanJson(response);
+                        Προϋπολογισμός: {req.TotalBudget}€ για {req.NumberOfPeople} άτομα.
+                        Ημερομηνίες: {req.StartDate:dd/MM/yyyy} έως {req.EndDate:dd/MM/yyyy}.
+                        Θέλω ακριβώς {totalDays} ημέρες. Απάντησε αποκλειστικά σε μορφή JSON.";
+            return await GenerateTextAsync(systemPrompt, userPrompt);
         }
 
-        public async Task<string> GenerateTextAsync(string prompt)
+        public async Task<string> GenerateTextAsync(string systemPrompt, string userPrompt)
         {
             var requestBody = new
             {
-                model = "mixtral-8x7b-32768",
+                model = "llama-3.3-70b-versatile",
                 messages = new[]
                 {
-                    new { role = "user", content = prompt }
-                },
-                temperature = 0.5
+            new { role = "system", content = systemPrompt },
+            new { role = "user", content = userPrompt }
+        },
+                temperature = 0.3,
+                response_format = new { type = "json_object" }
             };
 
             var request = new HttpRequestMessage(HttpMethod.Post, "https://api.groq.com/openai/v1/chat/completions");
@@ -77,7 +79,12 @@ namespace SmoothJorneyAPI.Services
             request.Content = new StringContent(JsonSerializer.Serialize(requestBody), Encoding.UTF8, "application/json");
 
             var response = await _httpClient.SendAsync(request);
-            response.EnsureSuccessStatusCode();
+
+            if (!response.IsSuccessStatusCode)
+            {
+                var errorBody = await response.Content.ReadAsStringAsync();
+                throw new Exception($"Groq API Error [{response.StatusCode}]: {errorBody}");
+            }
 
             var jsonResponse = await response.Content.ReadAsStringAsync();
             using var doc = JsonDocument.Parse(jsonResponse);
@@ -85,7 +92,7 @@ namespace SmoothJorneyAPI.Services
                 .GetProperty("choices")[0]
                 .GetProperty("message")
                 .GetProperty("content")
-                .GetString() ?? "Δεν ήταν δυνατή η ανάλυση.";
+                .GetString() ?? "{}";
         }
 
         public async Task<string> SummarizeReviewsAsync(IEnumerable<string> reviews)
@@ -145,18 +152,5 @@ namespace SmoothJorneyAPI.Services
             }
         }
 
-        private string CleanJson(string raw)
-        {
-            if (string.IsNullOrWhiteSpace(raw)) return "{}";
-
-            int startIndex = raw.IndexOf('{');
-            int endIndex = raw.LastIndexOf('}');
-
-            if (startIndex != -1 && endIndex != -1 && endIndex > startIndex)
-            {
-                return raw.Substring(startIndex, (endIndex - startIndex) + 1);
-            }
-            return raw.Trim();
-        }
     }
 }
