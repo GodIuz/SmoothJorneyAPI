@@ -127,25 +127,6 @@ namespace SmoothJorneyAPI.Controllers
             return Ok(new { Message = "Η επιχείρηση ανανεώθηκε επιτυχώς!", Business = business });
         }
 
-        [HttpGet("top-businesses")]
-        [Authorize(Roles = "Admin")]
-        public async Task<IActionResult> GetTopBusinesses()
-        {
-            var topList = await _context.Business
-                .OrderByDescending(b => b.AverageRating)
-                .Take(5)
-                .Select(b => new
-                {
-                    b.Name,
-                    b.City,
-                    Rating = b.AverageRating,
-                    ReviewsCount = _context.Reviews.Count(r => r.BusinessId == b.BusinessId)
-                })
-                .ToListAsync();
-
-            return Ok(topList);
-        }
-
         [HttpPut("user/update:{id}")]
         [Authorize(Roles = "Admin")]
         public async Task<IActionResult> UpdateUser(int id, [FromBody] UserDTO dto)

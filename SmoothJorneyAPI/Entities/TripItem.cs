@@ -25,10 +25,4 @@ public class TripItem
     public virtual Business? Business { get; set; }
 
     public DateTime ScheduledTime { get; set; }
-    public bool IsVisited { get; set; } = false;
-
-    [Column(TypeName = "decimal(18,2)")]
-    public decimal? Cost { get; set; }
-
-    public string? Duration { get; set; }
 }

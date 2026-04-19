@@ -1,8 +1,5 @@
 {
   "dependencies": {
-    "secrets1": {
-      "type": "secrets.user"
-    },
     "mssql3": {
       "ignored": "true",
       "type": "mssql",
@@ -13,6 +10,12 @@
       "resourceId": null,
       "type": "mssql.onprem",
       "connectionId": "ConnectionStrings:DatabaseConnection"
+    },
+    "secrets1": {
+      "secretStore": null,
+      "resourceId": null,
+      "type": "secrets.user",
+      "connectionId": null
     }
   }
 }

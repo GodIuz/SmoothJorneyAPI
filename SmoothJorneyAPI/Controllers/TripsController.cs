@@ -390,14 +390,6 @@ namespace SmoothJorneyAPI.Controllers
                     .Where(t => itemIds.Contains(t.TripItemId) && t.Trip.UserId == currentUserId)
                     .ToListAsync();
 
-                foreach (var item in itemsToUpdate)
-                {
-                    if (updateDictionary.TryGetValue(item.TripItemId, out bool isVisited))
-                    {
-                        item.IsVisited = isVisited;
-                    }
-                }
-
                 await _context.SaveChangesAsync();
 
                 return Ok(new { message = "Η πρόοδος αποθηκεύτηκε επιτυχώς." });

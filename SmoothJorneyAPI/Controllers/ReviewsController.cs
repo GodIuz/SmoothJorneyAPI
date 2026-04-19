@@ -34,35 +34,6 @@ namespace SmoothJorneyAPI.Controllers
             return reviews;
         }
 
-        [HttpPut("{id}")]
-        public async Task<IActionResult> PutReviews(int id, Reviews reviews)
-        {
-            if (id != reviews.Id)
-            {
-                return BadRequest();
-            }
-
-            _context.Entry(reviews).State = EntityState.Modified;
-
-            try
-            {
-                await _context.SaveChangesAsync();
-            }
-            catch (DbUpdateConcurrencyException)
-            {
-                if (!ReviewsExists(id))
-                {
-                    return NotFound();
-                }
-                else
-                {
-                    throw;
-                }
-            }
-
-            return NoContent();
-        }
-
         [HttpPost]
         [Authorize(Roles = "User")]
         private static bool DetectMaliciousActivity(Reviews r)
@@ -87,10 +58,6 @@ namespace SmoothJorneyAPI.Controllers
             return hasBadWords || isReviewBombing || isPromptInjection;
         }
 
-        private bool ReviewsExists(int id)
-        {
-            return _context.Reviews.Any(e => e.Id == id);
-        }
 
         [HttpPost("add")]
         [Authorize(Roles = "User")]
